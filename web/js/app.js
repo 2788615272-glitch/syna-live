@@ -12,6 +12,10 @@ const state = {
   busy: false
 };
 
+const expressionNames = {
+  normal: '平静', wink: '眨眼', angry: '生气', confused: '疑惑', observe: '观察', speechless: '无语'
+};
+
 const viewMeta = {
   studio: ['陪伴台', '和你的角色实时对话'],
   character: ['角色人设', '塑造名字、关系和说话方式'],
@@ -152,17 +156,53 @@ function updateProviderMeta() {
 
 function updateAvatarPreview() {
   const c = state.config;
-  for (const id of ['stageAvatar', 'characterAvatar']) $(id).src = c.stage.avatar;
+  const source = c.stage.expressions?.[c.stage.activeExpression] || c.stage.avatar;
+  for (const id of ['stageAvatar', 'characterAvatar']) $(id).src = source;
   $('stageAvatar').style.transform = `scale(${c.stage.avatarScale})`;
   $('characterAvatar').style.transform = `scale(${c.stage.avatarScale})`;
   $('chatCharacterName').textContent = c.character.name;
+  renderExpressionManager();
+}
+
+function renderExpressionManager() {
+  const container = $('expressionManager');
+  if (!container || !state.config) return;
+  container.replaceChildren(...Object.entries(expressionNames).map(([name, label]) => {
+    const card = document.createElement('div');
+    card.className = `expression-card${state.config.stage.activeExpression === name ? ' active' : ''}`;
+    const select = document.createElement('button');
+    select.type = 'button';
+    select.className = 'expression-select';
+    const image = document.createElement('img');
+    image.src = state.config.stage.expressions?.[name] || state.config.stage.avatar;
+    image.alt = `${label}表情`;
+    const text = document.createElement('span');
+    text.textContent = label;
+    select.append(image, text);
+    select.addEventListener('click', () => {
+      state.config.stage.activeExpression = name;
+      updateAvatarPreview();
+      saveConfig(false).catch((error) => toast(error.message, true));
+    });
+    const upload = document.createElement('label');
+    upload.className = 'expression-upload';
+    upload.title = `替换${label}表情`;
+    upload.textContent = '+';
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/webp';
+    input.addEventListener('change', (event) => uploadExpression(event.target.files?.[0], name).catch((error) => toast(error.message, true)));
+    upload.append(input);
+    card.append(select, upload);
+    return card;
+  }));
 }
 
 function updateStatus(status = null) {
   const ready = state.keyConfigured && Boolean(state.config.provider.model);
   $('readyDot').classList.toggle('ready', ready);
   $('readyLabel').textContent = ready ? '可以开始对话' : '等待模型配置';
-  $('versionLabel').textContent = 'Syna Live 0.1.0';
+  $('versionLabel').textContent = 'Syna Live 0.2.0';
   $('quickProvider').textContent = ready ? (state.providers.find((item) => item.id === state.config.provider.id)?.name || '已配置') : '未配置';
   $('quickVoice').textContent = state.config.voice.enabled ? '开启' : '关闭';
   const live = status?.live;
@@ -247,9 +287,27 @@ async function uploadAvatar(file, talking = false) {
   });
   const result = await api('/api/avatar', { method: 'POST', body: JSON.stringify({ dataUrl }) });
   if (talking) state.config.stage.talkingAvatar = result.url;
-  else state.config.stage.avatar = result.url;
+  else {
+    state.config.stage.avatar = result.url;
+    state.config.stage.expressions.normal = result.url;
+  }
   await saveConfig(false);
   toast(talking ? '说话立绘已更新' : '静态立绘已更新');
+}
+
+async function uploadExpression(file, expression) {
+  if (!file) return;
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const result = await api('/api/avatar', { method: 'POST', body: JSON.stringify({ dataUrl }) });
+  state.config.stage.expressions[expression] = result.url;
+  state.config.stage.activeExpression = expression;
+  await saveConfig(false);
+  toast(`${expressionNames[expression]}表情已更新`);
 }
 
 async function load() {
@@ -295,6 +353,10 @@ $('avatarScale').addEventListener('input', () => {
   $('characterAvatar').style.transform = `scale(${scale})`;
 });
 $('globalSaveBtn').addEventListener('click', () => saveConfig().catch((error) => toast(error.message, true)));
+$('openCompanionBtn').addEventListener('click', async () => {
+  try { await api('/api/companion/show', { method: 'POST', body: '{}' }); toast('桌面陪伴已弹出'); }
+  catch (error) { toast(error.message, true); }
+});
 $('refreshBtn').addEventListener('click', () => load().then(() => toast('状态已刷新')).catch((error) => toast(error.message, true)));
 $('chatForm').addEventListener('submit', (event) => {
   event.preventDefault();

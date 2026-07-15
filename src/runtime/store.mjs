@@ -76,6 +76,8 @@ export class LocalStore {
       stage: {
         avatar: text(stage.avatar, base.stage.avatar, 500),
         talkingAvatar: text(stage.talkingAvatar, base.stage.talkingAvatar, 500),
+        activeExpression: ['normal', 'wink', 'angry', 'confused', 'observe', 'speechless'].includes(stage.activeExpression) ? stage.activeExpression : base.stage.activeExpression,
+        expressions: Object.fromEntries(Object.entries(base.stage.expressions).map(([name, source]) => [name, text(stage.expressions?.[name], source, 500)])),
         avatarScale: number(stage.avatarScale, 1, 0.5, 1.8),
         subtitleEnabled: stage.subtitleEnabled !== false
       },

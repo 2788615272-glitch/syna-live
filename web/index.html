@@ -66,6 +66,7 @@
               <div><span>语音</span><strong id="quickVoice">开启</strong></div>
               <div><span>直播间</span><strong id="quickLive">未连接</strong></div>
             </div>
+            <button class="button primary companion-launch" id="openCompanionBtn"><i data-lucide="picture-in-picture-2"></i><span>弹出桌面陪伴立绘</span></button>
           </section>
         </div>
       </section>
@@ -85,6 +86,8 @@
           </section>
           <section class="avatar-section panel">
             <div class="avatar-canvas"><img id="characterAvatar" src="/assets/syna-normal.png" alt="角色立绘"></div>
+            <div class="expression-manager" id="expressionManager" aria-label="表情立绘管理"></div>
+            <small class="expression-help">点击表情即可预览；每个表情都能单独替换，图片只保存在本机。</small>
             <div class="avatar-actions">
               <label class="button secondary file-button"><i data-lucide="image-up"></i><span>静态立绘</span><input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
               <label class="button secondary file-button"><i data-lucide="audio-waveform"></i><span>说话立绘</span><input id="talkingAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"></label>

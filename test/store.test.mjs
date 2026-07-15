@@ -14,6 +14,8 @@ test('default profile is public and usable', async (t) => {
   assert.equal(config.character.userName, '搭档');
   assert.equal(config.live.enabled, false);
   assert.equal(config.live.roomId, '');
+  assert.equal(config.stage.activeExpression, 'normal');
+  assert.deepEqual(Object.keys(config.stage.expressions), ['normal', 'wink', 'angry', 'confused', 'observe', 'speechless']);
   const privateNickname = String.fromCodePoint(22235, 20998, 20043, 19968, 39640, 25163);
   assert.equal(JSON.stringify(config).includes(privateNickname), false);
 });

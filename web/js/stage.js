@@ -10,7 +10,9 @@ async function refresh() {
     const response = await fetch(`/api/stage/state?stageToken=${encodeURIComponent(stageToken)}`, { cache: 'no-store' });
     if (!response.ok) return;
     const payload = await response.json();
-    const source = payload.state.speaking && payload.stage.talkingAvatar ? payload.stage.talkingAvatar : payload.stage.avatar;
+    const expression = payload.state.expression || payload.stage.activeExpression || 'normal';
+    const expressionAvatar = payload.stage.expressions?.[expression] || payload.stage.avatar;
+    const source = payload.state.speaking && payload.stage.talkingAvatar ? payload.stage.talkingAvatar : expressionAvatar;
     if (source && source !== lastAvatar) {
       avatar.src = source;
       lastAvatar = source;

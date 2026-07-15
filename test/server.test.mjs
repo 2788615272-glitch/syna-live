@@ -28,3 +28,17 @@ test('local server protects data and diagnostics are redacted', async (t) => {
   assert.equal(JSON.stringify(diagnostics).includes(secret), false);
   assert.equal(JSON.stringify(diagnostics).includes(dir), false);
 });
+
+test('desktop companion command stays behind the local session token', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-companion-'));
+  const commands = [];
+  const vault = { has() { return false; }, get() { return ''; }, async set() {} };
+  const server = await startLocalServer({ dataDir: dir, vault, onCompanionCommand: (command) => commands.push(command) });
+  t.after(async () => { await server.close(); await rm(dir, { recursive: true, force: true }); });
+  const unauthorized = await fetch(`http://127.0.0.1:${server.port}/api/companion/show`, { method: 'POST' });
+  assert.equal(unauthorized.status, 401);
+  const token = new URL(server.companionUrl).searchParams.get('token');
+  const response = await fetch(`http://127.0.0.1:${server.port}/api/companion/show`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(commands, ['show']);
+});

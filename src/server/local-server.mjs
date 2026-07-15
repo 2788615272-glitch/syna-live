@@ -78,7 +78,7 @@ function publicConfig(config) {
   return structuredClone(config);
 }
 
-export async function startLocalServer({ dataDir, vault, port = 0 }) {
+export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCommand = () => {} }) {
   const store = await new LocalStore(dataDir).init();
   const runtime = new CompanionRuntime({
     store,
@@ -111,7 +111,7 @@ export async function startLocalServer({ dataDir, vault, port = 0 }) {
           status: runtime.status(),
           messages: store.getMessages(),
           stageUrl: `http://127.0.0.1:${address.port}/stage?stageToken=${stageToken}`,
-          version: '0.1.0'
+          version: '0.2.0'
         });
       }
 
@@ -144,6 +144,16 @@ export async function startLocalServer({ dataDir, vault, port = 0 }) {
         const input = await body(req, 64 * 1024);
         const message = await runtime.chat(input.message, 'chat');
         return json(res, 200, { ok: true, message, status: runtime.status() });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/companion/show') {
+        await onCompanionCommand('show');
+        return json(res, 200, { ok: true });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/companion/hide') {
+        await onCompanionCommand('hide');
+        return json(res, 200, { ok: true });
       }
 
       if (req.method === 'DELETE' && pathname === '/api/memory') {
@@ -185,7 +195,7 @@ export async function startLocalServer({ dataDir, vault, port = 0 }) {
         return json(res, 200, {
           ok: true,
           diagnostics: {
-            version: '0.1.0',
+            version: '0.2.0',
             platform: process.platform,
             provider: config.provider.id,
             providerConfigured: vault.has('providerApiKey') && Boolean(config.provider.model),
@@ -205,6 +215,7 @@ export async function startLocalServer({ dataDir, vault, port = 0 }) {
       if (pathname === '/vendor/lucide.js') return serveFile(res, lucideFile);
       if (pathname === '/' || pathname === '/index.html') return serveFile(res, path.join(webDir, 'index.html'));
       if (pathname === '/stage') return serveFile(res, path.join(webDir, 'stage.html'));
+      if (pathname === '/companion') return serveFile(res, path.join(webDir, 'companion.html'));
       const file = safeStatic(webDir, pathname);
       if (file) return serveFile(res, file);
       return json(res, 404, { ok: false, error: 'Not found' });
@@ -222,6 +233,7 @@ export async function startLocalServer({ dataDir, vault, port = 0 }) {
   return {
     port: address.port,
     dashboardUrl: `http://127.0.0.1:${address.port}/?token=${sessionToken}`,
+    companionUrl: `http://127.0.0.1:${address.port}/companion?token=${sessionToken}`,
     close: () => {
       runtime.disconnectLive();
       return new Promise((resolve) => server.close(resolve));

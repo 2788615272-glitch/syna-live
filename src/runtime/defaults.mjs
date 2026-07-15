@@ -22,8 +22,17 @@ export function defaultConfig() {
       pitch: 1
     },
     stage: {
-      avatar: '/assets/syna-normal.png',
+      avatar: '/assets/syna-normal.webp',
       talkingAvatar: '/assets/syna-talking.png',
+      activeExpression: 'normal',
+      expressions: {
+        normal: '/assets/syna-normal.webp',
+        wink: '/assets/syna-wink.webp',
+        angry: '/assets/syna-angry.webp',
+        confused: '/assets/syna-confused.webp',
+        observe: '/assets/syna-observe.webp',
+        speechless: '/assets/syna-speechless.webp'
+      },
       avatarScale: 1,
       subtitleEnabled: true
     },

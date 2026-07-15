@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Syna Desktop Companion</title>
+  <link rel="stylesheet" href="/companion.css">
+</head>
+<body>
+  <main class="companion" id="companion">
+    <header class="dragbar">
+      <span id="characterName">Syna</span>
+      <button id="hideBtn" title="隐藏">×</button>
+    </header>
+    <img class="avatar" id="avatar" src="/assets/syna-normal.webp" alt="桌面陪伴立绘">
+    <section class="chat-card">
+      <div class="reply" id="reply">我在这里。</div>
+      <div class="mode-tabs" role="group" aria-label="输入模式">
+        <button class="active" data-mode="text">打字</button>
+        <button data-mode="manual">按下说话</button>
+        <button data-mode="auto">自动聆听</button>
+      </div>
+      <form id="chatForm">
+        <textarea id="chatInput" rows="2" maxlength="4000" placeholder="和她说点什么……"></textarea>
+        <button class="send" id="sendBtn" type="submit">发送</button>
+      </form>
+      <button class="talk" id="talkBtn" type="button">点击开始识别</button>
+      <div class="listen-status" id="listenStatus">麦克风仅在你选择语音模式后启用</div>
+    </section>
+  </main>
+  <script type="module" src="/js/companion.js"></script>
+</body>
+</html>
