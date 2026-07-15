@@ -1,5 +1,7 @@
 name: Deploy website
 
+# This workflow also supports manual reruns after GitHub Pages is enabled.
+
 on:
   push:
     branches: [main]
