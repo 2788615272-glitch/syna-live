@@ -23,7 +23,8 @@ export function defaultConfig() {
       pitch: 1,
       tts: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini-tts', voice: 'alloy', format: 'mp3' },
       asrMode: 'browser',
-      asr: { baseUrl: 'https://api.openai.com/v1', model: 'whisper-1', language: 'zh' }
+      asr: { baseUrl: 'https://api.openai.com/v1', model: 'whisper-1', language: 'zh' },
+      volcano: { appId: '', cluster: 'volcano_icl', voiceId: '', asrResourceId: 'volc.seedasr.sauc.duration', speed: 1 }
     },
     stage: {
       avatar: '/assets/syna-normal.webp',

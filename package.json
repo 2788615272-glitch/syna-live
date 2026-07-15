@@ -1,6 +1,6 @@
 {
   "name": "syna-live",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Local-first customizable AI companion and livestream avatar.",
   "type": "module",
   "main": "src/electron.mjs",
@@ -28,7 +28,8 @@
   },
   "dependencies": {
     "bilibili-live-ws": "^6.3.1",
-    "lucide": "^0.468.0"
+    "lucide": "^0.468.0",
+    "ws": "^8.21.1"
   },
   "devDependencies": {
     "electron": "^33.3.1",

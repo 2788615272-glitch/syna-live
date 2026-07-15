@@ -7,6 +7,27 @@ function blobToDataUrl(blob) {
   });
 }
 
+function encodeWav(parts, inputRate, outputRate = 16000) {
+  const length = parts.reduce((sum, part) => sum + part.length, 0);
+  const input = new Float32Array(length);
+  let offset = 0;
+  for (const part of parts) { input.set(part, offset); offset += part.length; }
+  const ratio = inputRate / outputRate;
+  const samples = new Int16Array(Math.max(1, Math.floor(input.length / ratio)));
+  for (let index = 0; index < samples.length; index += 1) {
+    const value = Math.max(-1, Math.min(1, input[Math.min(input.length - 1, Math.floor(index * ratio))] || 0));
+    samples[index] = value < 0 ? value * 0x8000 : value * 0x7fff;
+  }
+  const buffer = new ArrayBuffer(44 + samples.byteLength);
+  const view = new DataView(buffer);
+  const write = (position, text) => [...text].forEach((char, index) => view.setUint8(position + index, char.charCodeAt(0)));
+  write(0, 'RIFF'); view.setUint32(4, 36 + samples.byteLength, true); write(8, 'WAVE'); write(12, 'fmt ');
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true); view.setUint32(24, outputRate, true);
+  view.setUint32(28, outputRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true); write(36, 'data'); view.setUint32(40, samples.byteLength, true);
+  new Int16Array(buffer, 44).set(samples);
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
 export function createSpeechInput({ api, getMode, onText, onStatus = () => {} }) {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition;
@@ -19,6 +40,7 @@ export function createSpeechInput({ api, getMode, onText, onStatus = () => {} })
   let soundTimer;
   let heardSound = false;
   let audioContext;
+  let stopPcmRecording;
 
   function monitorSound(mediaStream) {
     audioContext ||= new AudioContext();
@@ -61,6 +83,38 @@ export function createSpeechInput({ api, getMode, onText, onStatus = () => {} })
     if (continuous) chunkTimer = setTimeout(() => recorder?.state === 'recording' && recorder.stop(), 5000);
   }
 
+  async function startVolcanoChunk() {
+    if (!active) return;
+    stream ||= await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    const context = new AudioContext();
+    const source = context.createMediaStreamSource(stream);
+    const processor = context.createScriptProcessor(4096, 1, 1);
+    const parts = [];
+    heardSound = false;
+    let finished = false;
+    processor.onaudioprocess = (event) => {
+      const values = new Float32Array(event.inputBuffer.getChannelData(0));
+      parts.push(values);
+      if (!heardSound && values.some((value) => Math.abs(value) > 0.025)) heardSound = true;
+    };
+    source.connect(processor);
+    processor.connect(context.destination);
+    stopPcmRecording = async () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(chunkTimer);
+      processor.disconnect();
+      source.disconnect();
+      await context.close();
+      const blob = encodeWav(parts, context.sampleRate);
+      try { await transcribe(blob); } catch (error) { onStatus(error.message); }
+      if (active && continuous) startVolcanoChunk().catch((error) => onStatus(error.message));
+      else if (!continuous) { active = false; onStatus('识别完成'); }
+    };
+    onStatus(continuous ? '火山 ASR 自动聆听中…' : '正在录制 WAV，点击停止并识别');
+    if (continuous) chunkTimer = setTimeout(() => stopPcmRecording?.(), 5000);
+  }
+
   function ensureRecognition() {
     if (!Recognition) throw new Error('当前环境不支持浏览器语音识别，请切换到 ASR API');
     if (recognition) return recognition;
@@ -83,6 +137,7 @@ export function createSpeechInput({ api, getMode, onText, onStatus = () => {} })
       active = true;
       continuous = options.continuous === true;
       if (getMode() === 'api') return startApiChunk();
+      if (getMode() === 'volcano') return startVolcanoChunk();
       const engine = ensureRecognition();
       engine.continuous = continuous;
       engine.lang = options.language || 'zh-CN';
@@ -95,6 +150,7 @@ export function createSpeechInput({ api, getMode, onText, onStatus = () => {} })
       clearInterval(soundTimer);
       if (recognition) try { recognition.stop(); } catch {}
       if (recorder?.state === 'recording') recorder.stop();
+      if (stopPcmRecording) stopPcmRecording();
     },
     close() {
       this.stop();

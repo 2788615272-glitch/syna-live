@@ -11,7 +11,7 @@ const state = {
   messages: [],
   stageUrl: '',
   keyConfigured: false,
-  voiceKeys: { asr: false, tts: false },
+  voiceKeys: { asr: false, tts: false, volcano: false },
   busy: false
 };
 
@@ -84,6 +84,11 @@ function fillForm() {
   setValue('asrBaseUrl', c.voice.asr.baseUrl);
   setValue('asrModel', c.voice.asr.model);
   setValue('asrLanguage', c.voice.asr.language);
+  setValue('volcAppId', c.voice.volcano.appId);
+  setValue('volcCluster', c.voice.volcano.cluster);
+  setValue('volcVoiceId', c.voice.volcano.voiceId);
+  setValue('volcAsrResourceId', c.voice.volcano.asrResourceId);
+  setValue('volcSpeed', c.voice.volcano.speed);
   setValue('avatarScale', c.stage.avatarScale);
   setValue('liveRoomId', c.live.roomId);
   setValue('liveAutoReply', c.live.autoReply);
@@ -126,7 +131,8 @@ function collectConfig() {
       pitch: Number($('voicePitch').value),
       tts: { baseUrl: $('ttsBaseUrl').value, model: $('ttsModel').value, voice: $('ttsVoice').value, format: $('ttsFormat').value },
       asrMode: $('asrMode').value,
-      asr: { baseUrl: $('asrBaseUrl').value, model: $('asrModel').value, language: $('asrLanguage').value }
+      asr: { baseUrl: $('asrBaseUrl').value, model: $('asrModel').value, language: $('asrLanguage').value },
+      volcano: { appId: $('volcAppId').value, cluster: $('volcCluster').value, voiceId: $('volcVoiceId').value, asrResourceId: $('volcAsrResourceId').value, speed: Number($('volcSpeed').value) }
     },
     stage: {
       ...c.stage,
@@ -155,8 +161,8 @@ async function saveConfig(showToast = true) {
     state.keyConfigured = keyResult.keyConfigured;
     $('providerApiKey').value = '';
   }
-  for (const kind of ['asr', 'tts']) {
-    const input = $(`${kind}ApiKey`);
+  for (const kind of ['asr', 'tts', 'volcano']) {
+    const input = $(kind === 'volcano' ? 'volcAccessToken' : `${kind}ApiKey`);
     const apiKey = input.value.trim();
     if (apiKey) {
       const result = await api(`/api/secrets/${kind}`, { method: 'POST', body: JSON.stringify({ apiKey }) });
@@ -171,10 +177,13 @@ async function saveConfig(showToast = true) {
 function updateVoiceMeta() {
   const apiTts = $('voiceOutputMode').value === 'api';
   const apiAsr = $('asrMode').value === 'api';
+  const volcano = $('voiceOutputMode').value === 'volcano' || $('asrMode').value === 'volcano';
   $('systemVoiceFields').hidden = apiTts;
   $('ttsApiFields').hidden = !apiTts;
   $('asrApiFields').hidden = !apiAsr;
-  $('asrKeyState').textContent = apiAsr ? (state.voiceKeys.asr ? 'ASR Key 已保存' : '未配置 ASR Key') : '本机模式';
+  $('volcanoVoiceFields').hidden = !volcano;
+  $('asrKeyState').textContent = apiAsr ? (state.voiceKeys.asr ? 'ASR Key 已保存' : '未配置 ASR Key') : $('asrMode').value === 'volcano' ? (state.voiceKeys.volcano ? '火山 Token 已保存' : '未配置火山 Token') : '本机模式';
+  $('volcanoKeyState').textContent = state.voiceKeys.volcano ? 'Token 已保存' : '未配置 Token';
 }
 
 function updateProviderMeta() {
@@ -243,7 +252,7 @@ function updateStatus(status = null) {
   const ready = state.keyConfigured && Boolean(state.config.provider.model);
   $('readyDot').classList.toggle('ready', ready);
   $('readyLabel').textContent = ready ? '可以开始对话' : '等待模型配置';
-  $('versionLabel').textContent = 'Syna Live 0.3.0';
+  $('versionLabel').textContent = 'Syna Live 0.4.0';
   $('quickProvider').textContent = ready ? (state.providers.find((item) => item.id === state.config.provider.id)?.name || '已配置') : '未配置';
   $('quickVoice').textContent = state.config.voice.enabled ? '开启' : '关闭';
   const live = status?.live;
@@ -286,7 +295,7 @@ async function speak(text) {
     await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) });
     return;
   }
-  if (state.config.voice.outputMode === 'api') {
+  if (state.config.voice.outputMode !== 'system') {
     currentVoiceAudio?.pause();
     const payload = await api('/api/tts/synthesize', { method: 'POST', body: JSON.stringify({ text: text.replace(/^\[[^\]]+\]\s*/, '') }) });
     currentVoiceAudio = new Audio(payload.dataUrl);
@@ -371,7 +380,7 @@ async function load() {
   state.messages = payload.messages;
   state.stageUrl = payload.stageUrl;
   state.keyConfigured = payload.keyConfigured;
-  state.voiceKeys = payload.voiceKeys || { asr: false, tts: false };
+  state.voiceKeys = payload.voiceKeys || { asr: false, tts: false, volcano: false };
   $('providerId').replaceChildren(...state.providers.map((provider) => {
     const option = document.createElement('option');
     option.value = provider.id;

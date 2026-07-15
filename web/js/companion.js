@@ -53,7 +53,7 @@ function startRecognition() {
 async function speak(text) {
   if (!config.voice.enabled) { scheduleAutoListen(); return; }
   stopRecognition();
-  if (config.voice.outputMode === 'api') {
+  if (config.voice.outputMode !== 'system') {
     const payload = await api('/api/tts/synthesize', { method: 'POST', body: JSON.stringify({ text: text.replace(/^\[[^\]]+\]\s*/, '') }) });
     currentVoiceAudio?.pause();
     currentVoiceAudio = new Audio(payload.dataUrl);

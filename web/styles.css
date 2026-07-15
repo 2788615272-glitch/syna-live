@@ -147,6 +147,7 @@ label output { justify-self: end; color: var(--cyan); font-size: 11px; }
 .switch input:checked + span::after { transform: translateX(19px); background: #0d302d; }
 .live-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 .voice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+.voice-provider-wide { grid-column: 1 / -1; }
 .api-voice-fields, #systemVoiceFields { display: grid; gap: 14px; }
 .api-voice-fields[hidden], #systemVoiceFields[hidden] { display: none; }
 .check-row { min-height: 56px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }

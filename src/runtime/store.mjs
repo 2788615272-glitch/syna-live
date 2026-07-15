@@ -70,7 +70,7 @@ export class LocalStore {
       },
       voice: {
         enabled: voice.enabled !== false,
-        outputMode: ['system', 'api'].includes(voice.outputMode) ? voice.outputMode : base.voice.outputMode,
+        outputMode: ['system', 'api', 'volcano'].includes(voice.outputMode) ? voice.outputMode : base.voice.outputMode,
         language: text(voice.language, base.voice.language, 20),
         rate: number(voice.rate, 1, 0.5, 2),
         pitch: number(voice.pitch, 1, 0.5, 2),
@@ -80,11 +80,18 @@ export class LocalStore {
           voice: text(voice.tts?.voice, base.voice.tts.voice, 100),
           format: ['mp3', 'wav', 'opus', 'aac', 'flac'].includes(voice.tts?.format) ? voice.tts.format : base.voice.tts.format
         },
-        asrMode: ['browser', 'api'].includes(voice.asrMode) ? voice.asrMode : base.voice.asrMode,
+        asrMode: ['browser', 'api', 'volcano'].includes(voice.asrMode) ? voice.asrMode : base.voice.asrMode,
         asr: {
           baseUrl: text(voice.asr?.baseUrl, base.voice.asr.baseUrl, 500),
           model: text(voice.asr?.model, base.voice.asr.model, 200),
           language: text(voice.asr?.language, base.voice.asr.language, 20)
+        },
+        volcano: {
+          appId: text(voice.volcano?.appId, '', 100),
+          cluster: text(voice.volcano?.cluster, base.voice.volcano.cluster, 100),
+          voiceId: text(voice.volcano?.voiceId, '', 200),
+          asrResourceId: text(voice.volcano?.asrResourceId, base.voice.volcano.asrResourceId, 200),
+          speed: number(voice.volcano?.speed, 1, 0.5, 2)
         }
       },
       stage: {

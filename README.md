@@ -29,7 +29,7 @@ Syna Live 让用户把一张角色立绘、一段人设和自己的模型 Key，
 | 自定义形象 | 六种表情立绘、说话立绘、缩放和 OBS 透明舞台 |
 | AI 对话 | 火山方舟及其他 OpenAI 兼容模型 |
 | 桌面陪伴 | 透明悬浮立绘、胸口聊天框、打字/按下说话/自动聆听 |
-| 语音模型 | 独立 ASR/TTS 接口、模型与加密 Key，兼容 OpenAI Audio 接口 |
+| 语音模型 | 独立 ASR/TTS 凭据，支持 OpenAI Audio 兼容接口与火山原生语音协议 |
 | 直播互动 | B 站弹幕监听、角色自动回应、字幕同步 |
 | 本地记忆 | 可控消息数量与长期笔记，随时清除 |
 | 隐私保护 | 系统加密保存 Key，诊断脱敏，无项目方后端 |
@@ -73,6 +73,8 @@ Windows 用户可从 [GitHub Releases](https://github.com/2788615272-glitch/syna
 | 自定义 | 任意兼容服务 | 在应用中填写接口地址和模型 ID |
 
 模型费用由供应商直接向用户收取。Syna Live 不代理、不转售模型调用，也不会读取用户保存的 Key。
+
+火山语音用户可在“语音”页面直接选择“火山引擎语音合成”和“火山大模型 ASR”，填写 AppID、Access Token、Cluster、音色 ID 与 ASR Resource ID。Access Token 仅加密保存在本机。
 
 ## 隐私设计
 

@@ -121,7 +121,7 @@
         <div class="voice-grid">
           <section class="form-section">
             <div class="section-heading"><h2>语音合成 TTS</h2><label class="switch"><input id="voiceEnabled" type="checkbox"><span></span></label></div>
-            <label><span>输出方式</span><select id="voiceOutputMode"><option value="system">本机系统语音（免费）</option><option value="api">语音模型 API</option></select></label>
+            <label><span>输出方式</span><select id="voiceOutputMode"><option value="system">本机系统语音（免费）</option><option value="api">OpenAI 兼容 TTS</option><option value="volcano">火山引擎语音合成</option></select></label>
             <label><span>语言</span><select id="voiceLanguage"><option value="zh-CN">中文（普通话）</option><option value="zh-TW">中文（台湾）</option><option value="ja-JP">日语</option><option value="en-US">英语</option></select></label>
             <div id="systemVoiceFields">
               <label><span>语速</span><input id="voiceRate" type="range" min="0.5" max="2" step="0.05"><output id="voiceRateValue">1.00</output></label>
@@ -138,7 +138,7 @@
           </section>
           <section class="form-section">
             <div class="section-heading"><h2>语音识别 ASR</h2><span class="badge" id="asrKeyState">本机模式</span></div>
-            <label><span>识别方式</span><select id="asrMode"><option value="browser">浏览器语音识别（免费）</option><option value="api">ASR 模型 API（完整录音）</option></select></label>
+            <label><span>识别方式</span><select id="asrMode"><option value="browser">浏览器语音识别（免费）</option><option value="api">OpenAI 兼容 ASR</option><option value="volcano">火山大模型 ASR</option></select></label>
             <div class="api-voice-fields" id="asrApiFields">
               <div class="provider-links"><span class="badge recommended">OpenAI 兼容</span><a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">获取 API Key ↗</a><a href="https://platform.openai.com/docs/guides/speech-to-text" target="_blank" rel="noreferrer">ASR 接口说明 ↗</a></div>
               <label><span>ASR 接口地址</span><input id="asrBaseUrl" type="url"></label>
@@ -148,6 +148,14 @@
             </div>
             <div class="privacy-strip"><i data-lucide="mic"></i><span>API ASR 会把你主动录制的音频发送到所填接口；项目方不会接收。</span></div>
             <button class="button secondary" id="testAsrBtn"><i data-lucide="mic"></i><span>录制并测试 ASR</span></button>
+          </section>
+          <section class="form-section voice-provider-wide" id="volcanoVoiceFields">
+            <div class="section-heading"><h2>火山语音凭据</h2><span class="badge" id="volcanoKeyState">未配置</span></div>
+            <div class="provider-links"><span class="badge recommended">火山原生协议</span><a href="https://console.volcengine.com/speech/service/8" target="_blank" rel="noreferrer">语音控制台 ↗</a><a href="https://www.volcengine.com/docs/6561" target="_blank" rel="noreferrer">接口文档 ↗</a></div>
+            <div class="form-grid two"><label><span>AppID</span><input id="volcAppId" autocomplete="off"></label><label><span>Access Token</span><input id="volcAccessToken" type="password" autocomplete="new-password" placeholder="独立加密保存在本机"></label></div>
+            <div class="form-grid two"><label><span>TTS Cluster</span><input id="volcCluster" placeholder="volcano_icl"></label><label><span>TTS 音色 ID</span><input id="volcVoiceId"></label></div>
+            <div class="form-grid two"><label><span>ASR Resource ID</span><input id="volcAsrResourceId" placeholder="volc.seedasr.sauc.duration"></label><label><span>语速</span><input id="volcSpeed" type="number" min="0.5" max="2" step="0.05"></label></div>
+            <small>旧版 Syna 对应字段：VOLC_APP_ID、VOLC_ACCESS_TOKEN、VOLC_CLUSTER、VOLC_VOICE_ID、VOLC_ASR_RESOURCE_ID、VOLC_SPEED。</small>
           </section>
         </div>
       </section>
