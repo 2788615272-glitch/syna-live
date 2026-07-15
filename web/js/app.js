@@ -1,3 +1,5 @@
+import { createSpeechInput } from './speech-input.js';
+
 const $ = (id) => document.getElementById(id);
 const queryToken = new URLSearchParams(location.search).get('token') || '';
 if (queryToken) sessionStorage.setItem('synaSessionToken', queryToken);
@@ -9,6 +11,7 @@ const state = {
   messages: [],
   stageUrl: '',
   keyConfigured: false,
+  voiceKeys: { asr: false, tts: false },
   busy: false
 };
 
@@ -40,6 +43,7 @@ async function api(path, options = {}) {
 }
 
 let toastTimer;
+let currentVoiceAudio;
 function toast(message, error = false) {
   const node = $('toast');
   node.textContent = message;
@@ -68,9 +72,18 @@ function fillForm() {
   setValue('providerModel', c.provider.model);
   setValue('temperature', c.provider.temperature);
   setValue('voiceEnabled', c.voice.enabled);
+  setValue('voiceOutputMode', c.voice.outputMode);
   setValue('voiceLanguage', c.voice.language);
   setValue('voiceRate', c.voice.rate);
   setValue('voicePitch', c.voice.pitch);
+  setValue('ttsBaseUrl', c.voice.tts.baseUrl);
+  setValue('ttsModel', c.voice.tts.model);
+  setValue('ttsVoice', c.voice.tts.voice);
+  setValue('ttsFormat', c.voice.tts.format);
+  setValue('asrMode', c.voice.asrMode);
+  setValue('asrBaseUrl', c.voice.asr.baseUrl);
+  setValue('asrModel', c.voice.asr.model);
+  setValue('asrLanguage', c.voice.asr.language);
   setValue('avatarScale', c.stage.avatarScale);
   setValue('liveRoomId', c.live.roomId);
   setValue('liveAutoReply', c.live.autoReply);
@@ -84,6 +97,7 @@ function fillForm() {
   $('voicePitchValue').textContent = Number(c.voice.pitch).toFixed(2);
   updateAvatarPreview();
   updateProviderMeta();
+  updateVoiceMeta();
   updateStatus();
 }
 
@@ -106,9 +120,13 @@ function collectConfig() {
     },
     voice: {
       enabled: $('voiceEnabled').checked,
+      outputMode: $('voiceOutputMode').value,
       language: $('voiceLanguage').value,
       rate: Number($('voiceRate').value),
-      pitch: Number($('voicePitch').value)
+      pitch: Number($('voicePitch').value),
+      tts: { baseUrl: $('ttsBaseUrl').value, model: $('ttsModel').value, voice: $('ttsVoice').value, format: $('ttsFormat').value },
+      asrMode: $('asrMode').value,
+      asr: { baseUrl: $('asrBaseUrl').value, model: $('asrModel').value, language: $('asrLanguage').value }
     },
     stage: {
       ...c.stage,
@@ -137,8 +155,26 @@ async function saveConfig(showToast = true) {
     state.keyConfigured = keyResult.keyConfigured;
     $('providerApiKey').value = '';
   }
+  for (const kind of ['asr', 'tts']) {
+    const input = $(`${kind}ApiKey`);
+    const apiKey = input.value.trim();
+    if (apiKey) {
+      const result = await api(`/api/secrets/${kind}`, { method: 'POST', body: JSON.stringify({ apiKey }) });
+      state.voiceKeys[kind] = result.configured;
+      input.value = '';
+    }
+  }
   fillForm();
   if (showToast) toast('配置已保存');
+}
+
+function updateVoiceMeta() {
+  const apiTts = $('voiceOutputMode').value === 'api';
+  const apiAsr = $('asrMode').value === 'api';
+  $('systemVoiceFields').hidden = apiTts;
+  $('ttsApiFields').hidden = !apiTts;
+  $('asrApiFields').hidden = !apiAsr;
+  $('asrKeyState').textContent = apiAsr ? (state.voiceKeys.asr ? 'ASR Key 已保存' : '未配置 ASR Key') : '本机模式';
 }
 
 function updateProviderMeta() {
@@ -207,7 +243,7 @@ function updateStatus(status = null) {
   const ready = state.keyConfigured && Boolean(state.config.provider.model);
   $('readyDot').classList.toggle('ready', ready);
   $('readyLabel').textContent = ready ? '可以开始对话' : '等待模型配置';
-  $('versionLabel').textContent = 'Syna Live 0.2.1';
+  $('versionLabel').textContent = 'Syna Live 0.3.0';
   $('quickProvider').textContent = ready ? (state.providers.find((item) => item.id === state.config.provider.id)?.name || '已配置') : '未配置';
   $('quickVoice').textContent = state.config.voice.enabled ? '开启' : '关闭';
   const live = status?.live;
@@ -246,7 +282,19 @@ function renderMessages() {
 }
 
 async function speak(text) {
-  if (!state.config.voice.enabled || !('speechSynthesis' in window)) {
+  if (!state.config.voice.enabled) {
+    await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) });
+    return;
+  }
+  if (state.config.voice.outputMode === 'api') {
+    currentVoiceAudio?.pause();
+    const payload = await api('/api/tts/synthesize', { method: 'POST', body: JSON.stringify({ text: text.replace(/^\[[^\]]+\]\s*/, '') }) });
+    currentVoiceAudio = new Audio(payload.dataUrl);
+    currentVoiceAudio.onended = currentVoiceAudio.onerror = () => api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) }).catch(() => {});
+    await currentVoiceAudio.play();
+    return;
+  }
+  if (!('speechSynthesis' in window)) {
     await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) });
     return;
   }
@@ -323,6 +371,7 @@ async function load() {
   state.messages = payload.messages;
   state.stageUrl = payload.stageUrl;
   state.keyConfigured = payload.keyConfigured;
+  state.voiceKeys = payload.voiceKeys || { asr: false, tts: false };
   $('providerId').replaceChildren(...state.providers.map((provider) => {
     const option = document.createElement('option');
     option.value = provider.id;
@@ -352,6 +401,8 @@ $('providerId').addEventListener('change', () => {
 $('temperature').addEventListener('input', () => $('temperatureValue').textContent = Number($('temperature').value).toFixed(1));
 $('voiceRate').addEventListener('input', () => $('voiceRateValue').textContent = Number($('voiceRate').value).toFixed(2));
 $('voicePitch').addEventListener('input', () => $('voicePitchValue').textContent = Number($('voicePitch').value).toFixed(2));
+$('voiceOutputMode').addEventListener('change', updateVoiceMeta);
+$('asrMode').addEventListener('change', updateVoiceMeta);
 $('avatarScale').addEventListener('input', () => {
   const scale = Number($('avatarScale').value);
   $('stageAvatar').style.transform = `scale(${scale})`;
@@ -397,9 +448,12 @@ $('clearKeyBtn').addEventListener('click', async () => {
   updateStatus();
   toast('模型 Key 已清除');
 });
-$('testVoiceBtn').addEventListener('click', () => {
-  state.config.voice = collectConfig().voice;
-  speak(`你好，我是 ${state.config.character.name}。声音听起来怎么样？`);
+$('testVoiceBtn').addEventListener('click', async () => {
+  try {
+    await saveConfig(false);
+    await speak(`你好，我是 ${state.config.character.name}。声音听起来怎么样？`);
+    toast('正在播放语音');
+  } catch (error) { toast(error.message, true); }
 });
 $('connectLiveBtn').addEventListener('click', async () => {
   try { await saveConfig(false); const result = await api('/api/live/connect', { method: 'POST', body: '{}' }); updateStatus({ live: result.status }); toast('正在连接直播间'); }
@@ -422,17 +476,31 @@ $('exportDiagnosticsBtn').addEventListener('click', async () => {
   URL.revokeObjectURL(link.href);
 });
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (SpeechRecognition) {
-  const recognition = new SpeechRecognition();
-  recognition.lang = 'zh-CN';
-  recognition.interimResults = false;
-  recognition.onresult = (event) => { $('chatInput').value = event.results[0][0].transcript; $('chatForm').requestSubmit(); };
-  recognition.onerror = () => toast('语音输入不可用', true);
-  $('micBtn').addEventListener('click', () => recognition.start());
-} else {
-  $('micBtn').disabled = true;
-  $('micBtn').title = '当前环境不支持语音输入';
-}
+let asrTestOnly = false;
+const speechInput = createSpeechInput({
+  api,
+  getMode: () => state.config?.voice?.asrMode || $('asrMode').value,
+  onText: (text) => {
+    if (asrTestOnly) { asrTestOnly = false; toast(`识别结果：${text}`); return; }
+    $('chatInput').value = text;
+    $('chatForm').requestSubmit();
+  },
+  onStatus: (message) => toast(message, message.includes('失败') || message.includes('不可用'))
+});
+$('micBtn').addEventListener('click', async () => {
+  try {
+    if (speechInput.active) speechInput.stop();
+    else await speechInput.start({ language: state.config.voice.language });
+  } catch (error) { toast(error.message, true); }
+});
+$('testAsrBtn').addEventListener('click', async () => {
+  try {
+    if (speechInput.active) { speechInput.stop(); return; }
+    await saveConfig(false);
+    asrTestOnly = true;
+    await speechInput.start({ language: state.config.voice.language });
+    toast('请说一句话，再次点击结束录音');
+  } catch (error) { asrTestOnly = false; toast(error.message, true); }
+});
 
 load().catch((error) => toast(error.message, true));

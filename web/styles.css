@@ -146,6 +146,9 @@ label output { justify-self: end; color: var(--cyan); font-size: 11px; }
 .switch input:checked + span { background: var(--cyan); }
 .switch input:checked + span::after { transform: translateX(19px); background: #0d302d; }
 .live-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+.voice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+.api-voice-fields, #systemVoiceFields { display: grid; gap: 14px; }
+.api-voice-fields[hidden], #systemVoiceFields[hidden] { display: none; }
 .check-row { min-height: 56px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .check-row span { display: block; }
 .check-row strong, .check-row small { display: block; }
@@ -164,7 +167,7 @@ label output { justify-self: end; color: var(--cyan); font-size: 11px; }
   .brand div, .nav-item span, .sidebar-status div { display: none; }
   .nav-item { justify-content: center; padding: 0; }
   .sidebar-status { justify-content: center; padding-inline: 0; }
-  .studio-grid, .settings-layout, .live-grid { grid-template-columns: 1fr; height: auto; }
+  .studio-grid, .settings-layout, .live-grid, .voice-grid { grid-template-columns: 1fr; height: auto; }
   .chat-panel { height: 620px; }
   .stage-panel { height: 620px; }
 }

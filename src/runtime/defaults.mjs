@@ -17,9 +17,13 @@ export function defaultConfig() {
     },
     voice: {
       enabled: true,
+      outputMode: 'system',
       language: 'zh-CN',
       rate: 1,
-      pitch: 1
+      pitch: 1,
+      tts: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini-tts', voice: 'alloy', format: 'mp3' },
+      asrMode: 'browser',
+      asr: { baseUrl: 'https://api.openai.com/v1', model: 'whisper-1', language: 'zh' }
     },
     stage: {
       avatar: '/assets/syna-normal.webp',

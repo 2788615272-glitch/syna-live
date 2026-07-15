@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { LocalStore } from '../runtime/store.mjs';
 import { CompanionRuntime } from '../runtime/companion-runtime.mjs';
 import { OpenAICompatibleAdapter } from '../runtime/adapters/openai-compatible.mjs';
+import { OpenAIAudioAdapter } from '../runtime/adapters/openai-audio.mjs';
 import { BilibiliAdapter } from '../runtime/adapters/bilibili.mjs';
 import { providerList } from '../shared/providers.mjs';
 
@@ -108,10 +109,11 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
           config: publicConfig(store.getConfig()),
           providers: providerList(),
           keyConfigured: vault.has('providerApiKey'),
+          voiceKeys: { asr: vault.has('asrApiKey'), tts: vault.has('ttsApiKey') },
           status: runtime.status(),
           messages: store.getMessages(),
           stageUrl: `http://127.0.0.1:${address.port}/stage?stageToken=${stageToken}`,
-          version: '0.2.1'
+          version: '0.3.0'
         });
       }
 
@@ -133,11 +135,42 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
         return json(res, 200, { ok: true, keyConfigured: false });
       }
 
+      if (req.method === 'POST' && ['/api/secrets/asr', '/api/secrets/tts'].includes(pathname)) {
+        const input = await body(req, 16 * 1024);
+        const name = pathname.endsWith('/asr') ? 'asrApiKey' : 'ttsApiKey';
+        await vault.set(name, input.apiKey);
+        return json(res, 200, { ok: true, configured: vault.has(name) });
+      }
+
+      if (req.method === 'DELETE' && ['/api/secrets/asr', '/api/secrets/tts'].includes(pathname)) {
+        const name = pathname.endsWith('/asr') ? 'asrApiKey' : 'ttsApiKey';
+        await vault.set(name, '');
+        return json(res, 200, { ok: true, configured: false });
+      }
+
       if (req.method === 'POST' && pathname === '/api/provider/test') {
         const config = store.getConfig();
         const adapter = new OpenAICompatibleAdapter();
         await adapter.complete({ ...config.provider, apiKey: vault.get('providerApiKey'), temperature: 0, messages: [{ role: 'user', content: '只回复 OK' }] });
         return json(res, 200, { ok: true });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/asr/transcribe') {
+        const input = await body(req, 24 * 1024 * 1024);
+        const match = /^data:(audio\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(input.dataUrl || ''));
+        if (!match) throw new Error('录音格式无效');
+        const audio = Buffer.from(match[2], 'base64');
+        if (!audio.length || audio.length > 16 * 1024 * 1024) throw new Error('单次录音必须小于 16 MB');
+        const config = store.getConfig().voice.asr;
+        const text = await new OpenAIAudioAdapter().transcribe({ ...config, apiKey: vault.get('asrApiKey'), audio, mimeType: match[1] });
+        return json(res, 200, { ok: true, text });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/tts/synthesize') {
+        const input = await body(req, 32 * 1024);
+        const config = store.getConfig().voice.tts;
+        const audio = await new OpenAIAudioAdapter().synthesize({ ...config, apiKey: vault.get('ttsApiKey'), input: String(input.text || '').slice(0, 5000) });
+        return json(res, 200, { ok: true, dataUrl: `data:${audio.mimeType};base64,${audio.data}` });
       }
 
       if (req.method === 'POST' && pathname === '/api/chat') {
@@ -195,7 +228,7 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
         return json(res, 200, {
           ok: true,
           diagnostics: {
-            version: '0.2.1',
+            version: '0.3.0',
             platform: process.platform,
             provider: config.provider.id,
             providerConfigured: vault.has('providerApiKey') && Boolean(config.provider.model),

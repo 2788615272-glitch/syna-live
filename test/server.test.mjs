@@ -9,7 +9,7 @@ test('local server protects data and diagnostics are redacted', async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-server-'));
   const secret = 'not-a-real-secret-value';
   const vault = {
-    values: { providerApiKey: secret },
+    values: { providerApiKey: secret, asrApiKey: 'private-asr-key', ttsApiKey: 'private-tts-key' },
     has(name) { return Boolean(this.values[name]); },
     get(name) { return this.values[name] || ''; },
     async set(name, value) { this.values[name] = value; }
@@ -23,6 +23,8 @@ test('local server protects data and diagnostics are redacted', async (t) => {
   const bootstrap = await fetch(`http://127.0.0.1:${server.port}/api/bootstrap`, { headers }).then((response) => response.json());
   assert.equal(bootstrap.keyConfigured, true);
   assert.equal(JSON.stringify(bootstrap).includes(secret), false);
+  assert.equal(JSON.stringify(bootstrap).includes('private-asr-key'), false);
+  assert.equal(JSON.stringify(bootstrap).includes('private-tts-key'), false);
   assert.equal(JSON.stringify(bootstrap).includes(dir), false);
   const diagnostics = await fetch(`http://127.0.0.1:${server.port}/api/diagnostics`, { headers }).then((response) => response.json());
   assert.equal(JSON.stringify(diagnostics).includes(secret), false);
