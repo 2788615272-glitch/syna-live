@@ -114,7 +114,7 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
           status: runtime.status(),
           messages: store.getMessages(),
           stageUrl: `http://127.0.0.1:${address.port}/stage?stageToken=${stageToken}`,
-          version: '0.4.0'
+          version: '0.4.1'
         });
       }
 
@@ -233,7 +233,7 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
         return json(res, 200, {
           ok: true,
           diagnostics: {
-            version: '0.4.0',
+            version: '0.4.1',
             platform: process.platform,
             provider: config.provider.id,
             providerConfigured: vault.has('providerApiKey') && Boolean(config.provider.model),

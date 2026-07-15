@@ -34,3 +34,17 @@ test('Volcengine ASR sends native websocket headers and returns final text', asy
   assert.equal(FakeSocket.instance.options.headers['X-Api-App-Key'], 'app-id');
   assert.equal(FakeSocket.instance.options.headers['X-Api-Resource-Id'], 'volc.seedasr.sauc.duration');
 });
+
+test('Volcengine TTS retries the transient SaaS grant loading error once', async () => {
+  let calls = 0;
+  const adapter = new VolcengineAudioAdapter({ fetchImpl: async () => {
+    calls += 1;
+    const payload = calls === 1
+      ? { code: 5000, message: 'load grant requested grant not found in SaaS storage' }
+      : { code: 3000, data: Buffer.from('wav').toString('base64') };
+    return new Response(JSON.stringify(payload), { status: 200 });
+  }});
+  const result = await adapter.synthesize({ appId: 'app-id', accessToken: 'token', cluster: 'volcano_icl', voiceId: 'voice-id', input: '你好' });
+  assert.equal(result.mimeType, 'audio/wav');
+  assert.equal(calls, 2);
+});

@@ -30,19 +30,24 @@ export class VolcengineAudioAdapter {
 
   async synthesize({ appId, accessToken, cluster = 'volcano_icl', voiceId, speed = 1, input }) {
     if (!appId || !accessToken || !voiceId) throw new Error('请填写火山 AppID、Access Token 和音色 ID');
-    const response = await this.fetch('https://openspeech.bytedance.com/api/v1/tts', {
-      method: 'POST',
-      headers: { Authorization: `Bearer;${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        app: { appid: appId, token: accessToken, cluster },
-        user: { uid: 'syna_live' },
-        audio: { voice_type: voiceId, encoding: 'wav', speed_ratio: Number(speed) || 1 },
-        request: { reqid: crypto.randomUUID(), text: input, text_type: 'plain', operation: 'query' }
-      })
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload.code !== 3000 || !payload.data) throw new Error(`火山 TTS 失败${payload.message ? `：${payload.message}` : ` (${response.status})`}`);
-    return { data: payload.data, mimeType: 'audio/wav' };
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await this.fetch('https://openspeech.bytedance.com/api/v1/tts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer;${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          app: { appid: appId, token: accessToken, cluster },
+          user: { uid: 'syna_live' },
+          audio: { voice_type: voiceId, encoding: 'wav', speed_ratio: Number(speed) || 1 },
+          request: { reqid: crypto.randomUUID(), text: input, text_type: 'plain', operation: 'query' }
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && payload.code === 3000 && payload.data) return { data: payload.data, mimeType: 'audio/wav' };
+      const transientGrantError = String(payload.message || '').includes('load grant requested grant not found in SaaS storage');
+      if (attempt === 0 && transientGrantError) { await new Promise((resolve) => setTimeout(resolve, 300)); continue; }
+      throw new Error(`火山 TTS 失败${payload.message ? `：${payload.message}` : ` (${response.status})`}`);
+    }
+    throw new Error('火山 TTS 失败');
   }
 
   transcribe({ appId, accessToken, resourceId = 'volc.seedasr.sauc.duration', audio }) {
