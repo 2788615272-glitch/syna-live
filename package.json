@@ -1,0 +1,62 @@
+{
+  "name": "syna-live",
+  "version": "0.1.0",
+  "description": "Local-first customizable AI companion and livestream avatar.",
+  "type": "module",
+  "main": "src/electron.mjs",
+  "private": false,
+  "license": "MIT",
+  "author": "Syna Live contributors",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "electron .",
+    "start:web": "node src/cli.mjs",
+    "test": "node --test",
+    "check": "node scripts/check.mjs",
+    "build:icon": "node scripts/build-icon.mjs",
+    "dist:win": "electron-builder --win nsis portable"
+  },
+  "dependencies": {
+    "bilibili-live-ws": "^6.3.1",
+    "lucide": "^0.468.0"
+  },
+  "devDependencies": {
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "png-to-ico": "^3.0.2"
+  },
+  "build": {
+    "appId": "live.syna.desktop",
+    "productName": "Syna Live",
+    "artifactName": "SynaLive-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "web/**/*",
+      "package.json",
+      "LICENSE",
+      "ASSET_LICENSE.md",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "artifactName": "SynaLive-Setup-${version}-${arch}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "portable": {
+      "artifactName": "SynaLive-Portable-${version}-${arch}.${ext}"
+    }
+  }
+}

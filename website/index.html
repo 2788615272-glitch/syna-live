@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Syna Live，自定义形象与人设的本地陪伴直播 AI。">
+  <title>Syna Live</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="#top">Syna Live</a>
+    <nav><a href="#experience">体验</a><a href="#privacy">隐私</a><a id="headerGithub" href="#">GitHub</a></nav>
+  </header>
+  <main id="top">
+    <section class="hero">
+      <img src="assets/syna.png" alt="Syna 默认免费角色">
+      <div class="hero-shade"></div>
+      <div class="hero-copy">
+        <span class="eyebrow">LOCAL-FIRST COMPANION STUDIO</span>
+        <h1>Syna Live</h1>
+        <p>把自己的形象、人设和声音，变成真正陪在桌面与直播间里的 AI 角色。</p>
+        <div class="hero-actions">
+          <a class="primary" id="downloadLink" href="#">下载 Windows 版</a>
+          <a class="secondary" id="sourceLink" href="#">查看源代码</a>
+        </div>
+        <small>MIT 开源 · 默认立绘 CC0 · 无遥测</small>
+      </div>
+    </section>
+
+    <section class="experience" id="experience">
+      <div class="section-copy"><span>01</span><h2>角色由你定义</h2><p>上传静态与说话立绘，编辑名字、关系、性格和表达方式。Syna 是开箱即用的免费默认角色，也可以被完整替换。</p></div>
+      <div class="stage-demo">
+        <div class="stage-top"><span>OBS STAGE</span><strong>LIVE</strong></div>
+        <img src="assets/syna.png" alt="Syna 舞台效果">
+        <p id="demoLine">我在呢，今天想聊点什么？</p>
+        <button id="nextLine">换一句</button>
+      </div>
+    </section>
+
+    <section class="privacy" id="privacy">
+      <div><span>02</span><h2>私人数据留在本机</h2></div>
+      <p>角色配置、长期记忆、上传立绘和加密凭据保存在用户自己的应用数据目录。没有账号系统，没有分析 SDK，也不会把你的 Syna 上传到项目服务器。</p>
+    </section>
+
+    <section class="workflow">
+      <span>03</span><h2>连接模型，打开舞台，开始陪伴</h2>
+      <ol><li>选择火山方舟或其他兼容模型</li><li>保存角色人设与立绘</li><li>将透明舞台地址添加到 OBS</li></ol>
+    </section>
+  </main>
+  <footer><strong>Syna Live</strong><span>Open source companion studio.</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>
