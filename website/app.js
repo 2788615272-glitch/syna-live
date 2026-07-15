@@ -25,7 +25,17 @@ for (const { image: source } of Object.values(expressionData)) {
   expressionImages.set(source, image);
 }
 
-document.querySelector('.hero img').src = 'assets/syna.webp';
+const heroImage = document.querySelector('.hero > img');
+const heroStack = document.createElement('div');
+heroStack.className = 'hero-expression-stack';
+for (const expression of ['speechless', 'confused', 'angry', 'normal', 'wink', 'observe']) {
+  const image = document.createElement('img');
+  image.src = expressionData[expression].image;
+  image.alt = `Syna ${expression}`;
+  image.decoding = 'async';
+  heroStack.append(image);
+}
+heroImage.replaceWith(heroStack);
 document.getElementById('demoAvatar').src = expressionData.normal.image;
 
 let currentExpression = 'normal';
