@@ -49,7 +49,7 @@ function headers(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'self'");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'self'");
 }
 
 function errorMessage(error) {
@@ -114,7 +114,7 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
           status: runtime.status(),
           messages: store.getMessages(),
           stageUrl: `http://127.0.0.1:${address.port}/stage?stageToken=${stageToken}`,
-          version: '0.4.1'
+          version: '0.4.2'
         });
       }
 
@@ -233,7 +233,7 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
         return json(res, 200, {
           ok: true,
           diagnostics: {
-            version: '0.4.1',
+            version: '0.4.2',
             platform: process.platform,
             provider: config.provider.id,
             providerConfigured: vault.has('providerApiKey') && Boolean(config.provider.model),

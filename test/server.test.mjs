@@ -18,6 +18,8 @@ test('local server protects data and diagnostics are redacted', async (t) => {
   t.after(async () => { await server.close(); await rm(dir, { recursive: true, force: true }); });
   const unauthorized = await fetch(`http://127.0.0.1:${server.port}/api/bootstrap`);
   assert.equal(unauthorized.status, 401);
+  const dashboard = await fetch(`http://127.0.0.1:${server.port}/`);
+  assert.match(dashboard.headers.get('content-security-policy') || '', /media-src[^;]*data:/);
   const token = new URL(server.dashboardUrl).searchParams.get('token');
   const headers = { Authorization: `Bearer ${token}` };
   const bootstrap = await fetch(`http://127.0.0.1:${server.port}/api/bootstrap`, { headers }).then((response) => response.json());
