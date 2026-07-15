@@ -1,5 +1,7 @@
+import { resolveTemperature } from '../../shared/providers.mjs';
+
 export class OpenAICompatibleAdapter {
-  async complete({ baseUrl, model, apiKey, messages, temperature = 0.9 }) {
+  async complete({ id, baseUrl, model, apiKey, messages, temperature = 0.9 }) {
     if (!apiKey) throw new Error('请先配置模型 API Key');
     if (!baseUrl || !/^https?:\/\//i.test(baseUrl)) throw new Error('模型接口地址无效');
     if (!model) throw new Error('请填写模型 ID');
@@ -13,7 +15,7 @@ export class OpenAICompatibleAdapter {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ model, messages, temperature, stream: false }),
+        body: JSON.stringify({ model, messages, temperature: resolveTemperature(id, model, temperature), stream: false }),
         signal: controller.signal
       });
       const payload = await response.json().catch(() => ({}));

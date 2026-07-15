@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile, rename, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { defaultConfig, defaultState } from './defaults.mjs';
+import { resolveTemperature } from '../shared/providers.mjs';
 
 async function readJson(file, fallback) {
   try {
@@ -65,7 +66,7 @@ export class LocalStore {
         id: text(provider.id, base.provider.id, 40),
         baseUrl: text(provider.baseUrl, base.provider.baseUrl, 500),
         model: text(provider.model, '', 200),
-        temperature: number(provider.temperature, base.provider.temperature, 0, 2)
+        temperature: resolveTemperature(provider.id, provider.model, number(provider.temperature, base.provider.temperature, 0, 2))
       },
       voice: {
         enabled: voice.enabled !== false,
