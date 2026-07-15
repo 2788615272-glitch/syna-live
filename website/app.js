@@ -15,6 +15,19 @@ const expressionData = {
   speechless: { image: 'assets/syna-speechless.png', lines: ['……行，你开心就好。', '这我是真没想到。'] }
 };
 
+for (const data of Object.values(expressionData)) data.image = data.image.replace('.png', '.webp');
+
+const expressionImages = new Map();
+for (const { image: source } of Object.values(expressionData)) {
+  const image = new Image();
+  image.decoding = 'async';
+  image.src = source;
+  expressionImages.set(source, image);
+}
+
+document.querySelector('.hero img').src = 'assets/syna.webp';
+document.getElementById('demoAvatar').src = expressionData.normal.image;
+
 let currentExpression = 'normal';
 let lineIndex = 0;
 let uploadedAvatarUrl = '';

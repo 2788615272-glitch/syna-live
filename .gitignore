@@ -12,6 +12,7 @@ secrets.json
 secrets.enc
 /user-data/
 /.test-user-data/
+/.first-run-preview/
 /runtime/
 /memory/
 /logs/

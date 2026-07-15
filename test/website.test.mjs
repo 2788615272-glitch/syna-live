@@ -24,7 +24,7 @@ test('character workshop updates persona, expression, and stage line', async () 
   assert.equal(document.getElementById('stagePersona').textContent, persona.value);
 
   document.querySelector('[data-expression="angry"]').click();
-  assert.match(document.getElementById('demoAvatar').src, /syna-angry\.png$/);
+  assert.match(document.getElementById('demoAvatar').src, /syna-angry\.webp$/);
   assert.match(document.getElementById('demoLine').textContent, /偷偷改配置/);
 
   document.getElementById('customLine').value = '新的舞台台词';
@@ -34,6 +34,6 @@ test('character workshop updates persona, expression, and stage line', async () 
 
 test('all public Syna expressions are present', async () => {
   for (const expression of ['normal', 'wink', 'angry', 'confused', 'observe', 'speechless']) {
-    await access(new URL(`assets/syna-${expression}.png`, website));
+    await access(new URL(`assets/syna-${expression}.webp`, website));
   }
 });
