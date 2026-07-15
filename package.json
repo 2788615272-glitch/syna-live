@@ -7,6 +7,14 @@
   "private": false,
   "license": "MIT",
   "author": "Syna Live contributors",
+  "homepage": "https://2788615272-glitch.github.io/syna-live/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2788615272-glitch/syna-live.git"
+  },
+  "bugs": {
+    "url": "https://github.com/2788615272-glitch/syna-live/issues"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -25,6 +33,7 @@
   "devDependencies": {
     "electron": "^33.3.1",
     "electron-builder": "^25.1.8",
+    "jsdom": "^26.1.0",
     "png-to-ico": "^3.0.2"
   },
   "build": {

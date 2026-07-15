@@ -1,85 +1,127 @@
-# Syna Live
+<div align="center">
+  <img src="website/assets/syna-normal.png" width="230" alt="Syna">
+  <h1>Syna Live</h1>
+  <p><strong>自定义形象、人设和声音的本地陪伴直播 AI</strong></p>
+  <p>
+    <a href="https://2788615272-glitch.github.io/syna-live/">在线角色工坊</a> ·
+    <a href="https://github.com/2788615272-glitch/syna-live/releases/latest">下载 Windows 版</a> ·
+    <a href="README.en.md">English</a>
+  </p>
+  <p>
+    <img alt="License" src="https://img.shields.io/github/license/2788615272-glitch/syna-live">
+    <img alt="Release" src="https://img.shields.io/github/v/release/2788615272-glitch/syna-live">
+    <img alt="CI" src="https://github.com/2788615272-glitch/syna-live/actions/workflows/ci.yml/badge.svg">
+    <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-4d9fef">
+  </p>
+</div>
 
-[简体中文](README.zh-CN.md)
+Syna Live 让用户把一张角色立绘、一段人设和自己的模型 Key，组合成真正能聊天、说话、接收直播弹幕并出现在 OBS 舞台里的 AI 角色。
 
-Syna Live is a local-first, customizable AI companion and livestream avatar.
-Users can replace the character art, personality, relationship, model provider,
-voice, memory, and livestream settings without editing code.
+项目默认附带可自由使用的 Syna 立绘与人设，下载后就能看到完整效果；也可以全部换成自己的角色。应用本地优先、无账号系统、无遥测，不需要租服务器。
 
-The bundled Syna character is ready to use and released under CC0. The app has
-no account system, analytics, or hosted backend.
+![Syna Live 控制台](docs/control-panel.png)
 
-![Syna Live control panel](docs/control-panel.png)
+## 核心能力
 
-## Features
+| 能力 | 当前支持 |
+|---|---|
+| 自定义角色 | 名字、用户称呼、关系、性格、表达方式、相处边界 |
+| 自定义形象 | 静态立绘、说话立绘、缩放和 OBS 透明舞台 |
+| AI 对话 | 火山方舟及其他 OpenAI 兼容模型 |
+| 语音陪伴 | 系统语音朗读，环境支持时可直接语音输入 |
+| 直播互动 | B 站弹幕监听、角色自动回应、字幕同步 |
+| 本地记忆 | 可控消息数量与长期笔记，随时清除 |
+| 隐私保护 | 系统加密保存 Key，诊断脱敏，无项目方后端 |
 
-- Editable character name, relationship, personality, style, and boundaries
-- Static and talking avatar uploads with a transparent OBS stage
-- OpenAI-compatible providers, with Volcengine Ark recommended by default
-- Local chat memory and optional long-term notes
-- System text-to-speech and supported browser speech input
-- Optional Bilibili danmaku connection and automatic character replies
-- Electron `safeStorage` encryption for provider keys
-- Redacted diagnostics and no telemetry
+## 在线角色工坊
 
-## Download
+访问 [Syna Live 在线演示](https://2788615272-glitch.github.io/syna-live/)：
 
-Download the installer or portable Windows build from
-[GitHub Releases](../../releases/latest). The release artifacts are generated
-from tagged commits by GitHub Actions.
+- 修改角色名、关系和核心人设；
+- 上传自己的 PNG、JPEG 或 WebP 立绘；
+- 切换 Syna 的平静、眨眼、生气、疑惑、观察和无语表情；
+- 输入台词并即时查看舞台效果。
 
-## Run from source
+在线演示不会上传或保存用户选择的图片。
 
-Requirements: Node.js 20 or newer.
+## 下载安装
+
+Windows 用户可从 [GitHub Releases](https://github.com/2788615272-glitch/syna-live/releases/latest) 下载：
+
+- `SynaLive-Setup-*.exe`：安装版；
+- `SynaLive-Portable-*.exe`：免安装版。
+
+首次启动：
+
+1. 打开“模型连接”，选择供应商；
+2. 填写模型 ID 和 API Key，点击“测试连接”；
+3. 在“角色人设”中保留 Syna 或换成自己的角色；
+4. 在“直播”中复制舞台地址，添加为 OBS 浏览器源；
+5. 可选填写 B 站房间号并开启弹幕自动回复。
+
+## 模型供应商
+
+| 供应商 | 用途 | 官方入口 |
+|---|---|---|
+| 火山方舟 / Doubao | 默认推荐 | [获取 API Key](https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey) · [模型文档](https://www.volcengine.com/docs/82379/1263482) |
+| OpenAI | OpenAI 兼容接口 | [获取 API Key](https://platform.openai.com/api-keys) |
+| DeepSeek | OpenAI 兼容接口 | [获取 API Key](https://platform.deepseek.com/api_keys) |
+| Moonshot / Kimi | OpenAI 兼容接口 | [获取 API Key](https://platform.moonshot.cn/console/api-keys) |
+| 自定义 | 任意兼容服务 | 在应用中填写接口地址和模型 ID |
+
+模型费用由供应商直接向用户收取。Syna Live 不代理、不转售模型调用，也不会读取用户保存的 Key。
+
+## 隐私设计
+
+以下内容只保存在用户自己的应用数据目录：
+
+- API Key 的系统加密密文；
+- 角色人设和直播配置；
+- 对话记忆与长期笔记；
+- 用户上传的角色图片。
+
+仓库不会收集分析数据。诊断导出不包含 Key、Cookie、本机路径、用户名、提示词、聊天内容或上传文件。详见 [PRIVACY.md](PRIVACY.md) 与 [SECURITY.md](SECURITY.md)。
+
+## 从源码运行
+
+需要 Node.js 20 或更高版本：
 
 ```bash
 npm install
 npm start
 ```
 
-For browser-only development:
+开发模式：
 
 ```bash
 npm run start:web
-```
-
-The development server reads `SYNA_PROVIDER_API_KEY` from the environment and
-does not persist it. The Electron desktop app stores keys using the operating
-system's encrypted credential facility.
-
-## First launch
-
-1. Open **Model Connection** and choose a provider.
-2. Enter a model ID and API key, then run the connection test.
-3. Edit the character under **Character Persona** or keep the bundled Syna.
-4. Copy the stage URL from **Livestream** into an OBS browser source.
-5. Optionally enter a Bilibili room ID and enable danmaku replies.
-
-Provider keys and billing belong to the user. Syna Live does not proxy or
-resell model access.
-
-## Data and privacy
-
-Application data is stored in Electron's per-user application-data directory,
-outside the installation and source folders. It includes configuration, local
-memory, encrypted credentials, and user-uploaded images. See [PRIVACY.md](PRIVACY.md).
-
-Never publish an application-data directory. The repository ignores common
-secret, memory, log, upload, and runtime paths, and CI runs an additional secret
-scan.
-
-## Development
-
-```bash
 npm test
 npm run check
+```
+
+Windows 打包：
+
+```bash
 npm run dist:win
 ```
 
-Architecture details are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-Release instructions are in [docs/RELEASING.md](docs/RELEASING.md).
+## 项目结构
 
-## Licenses
+```text
+src/runtime/     角色运行时、模型与直播适配器
+src/server/      仅监听本机的安全控制服务
+web/             Electron 控制台与 OBS 舞台
+website/         GitHub Pages 官网和角色工坊
+test/            隐私、配置、运行时和服务测试
+.github/         CI、Pages 与 Windows Release 工作流
+```
 
-Code is licensed under MIT. Bundled Syna images are CC0. See
-[ASSET_LICENSE.md](ASSET_LICENSE.md) for asset terms.
+架构说明见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)，发布流程见 [docs/RELEASING.md](docs/RELEASING.md)。
+
+## 许可证
+
+- 程序代码：MIT；
+- 仓库附带的 Syna 立绘：CC0，可自由使用、修改、再发布或商用，无需署名；
+- 用户上传的素材：权利仍归各自所有者。
+
+详见 [ASSET_LICENSE.md](ASSET_LICENSE.md) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

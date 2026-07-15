@@ -1,7 +1,7 @@
 # Asset License
 
-The bundled Syna avatar images in `web/assets/syna-normal.png` and
-`web/assets/syna-talking.png` are dedicated to the public domain under
+The bundled Syna avatar images matching `web/assets/syna-*.png` and
+`website/assets/syna*.png` are dedicated to the public domain under
 [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/).
 
 You may use, copy, modify, redistribute, or sell work containing these images
