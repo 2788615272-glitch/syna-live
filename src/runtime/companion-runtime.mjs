@@ -18,6 +18,7 @@ export class CompanionRuntime {
     this.busy = false;
     this.lastVisionReactionAt = 0;
     this.latestVisionFrame = '';
+    this.speechQueue = [];
   }
 
   status() {
@@ -76,6 +77,19 @@ export class CompanionRuntime {
     let result;
     for await (const event of this.chatStream(content, source)) if (event.type === 'done') result = event.message;
     return result;
+  }
+
+  enqueueSpeech(text, source, groupId = '') {
+    const item = { id: crypto.randomUUID(), text: String(text || '').trim(), source: String(source || 'chat'), groupId, createdAt: Date.now() };
+    if (!item.text) return null;
+    this.speechQueue.push(item);
+    this.speechQueue = this.speechQueue.slice(-50);
+    return { ...item };
+  }
+
+  takeQueuedSpeech() {
+    const item = this.speechQueue.shift();
+    return item ? { ...item } : null;
   }
 
   async *chatStream(content, source = 'chat') {
@@ -162,7 +176,10 @@ export class CompanionRuntime {
         this.store.setStageState({ subtitle: `${user}：${content}` });
         if (!config.live.autoReply || this.busy) return;
         try {
-          await this.chat(`直播观众 ${user} 发来弹幕：${content}\n请自然回应这条弹幕。`, 'bilibili');
+          const groupId = `bilibili-${crypto.randomUUID()}`;
+          for await (const event of this.chatStream(`直播观众 ${user} 发来弹幕：${content}\n请自然回应这条弹幕。`, 'bilibili')) {
+            if (event.type === 'speech') this.enqueueSpeech(event.text, 'bilibili', groupId);
+          }
         } catch {}
       }
     });

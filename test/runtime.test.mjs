@@ -120,3 +120,28 @@ test('single-brain vision attaches the latest screenshot directly to the user tu
   assert.equal(user.content[1].type, 'image_url');
   assert.equal(user.content[1].image_url.url, 'data:image/jpeg;base64,AA==');
 });
+
+test('Bilibili auto replies enqueue their streamed speech for TTS playback', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-live-speech-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = await new LocalStore(dir).init();
+  const config = store.getConfig();
+  config.live = { ...config.live, roomId: '6782529', autoReply: true };
+  await store.saveConfig(config);
+  let liveHandlers;
+  const runtime = new CompanionRuntime({
+    store,
+    vault: { has: () => true, get: () => 'key' },
+    modelAdapter: { stream: async function* () { yield '[平静]你好呀，'; yield '欢迎来到直播间。'; } },
+    liveAdapter: {
+      getStatus: () => ({ connected: true }),
+      connect: async (_roomId, handlers) => { liveHandlers = handlers; return { connected: true }; },
+      disconnect: () => {}
+    }
+  });
+  await runtime.connectLive();
+  await liveHandlers.onMessage({ user: '测试观众', content: '你好' });
+  const speech = runtime.takeQueuedSpeech();
+  assert.equal(speech.source, 'bilibili');
+  assert.match(speech.text, /你好呀/);
+});

@@ -65,6 +65,7 @@ let speechPlayback = Promise.resolve();
 let speechGeneration = 0;
 let cancelCurrentSpeech;
 let pendingSpeechMessage = '';
+const backgroundSpeechGenerations = new Map();
 function toast(message, error = false) {
   const node = $('toast');
   node.textContent = message;
@@ -327,7 +328,7 @@ function updateStatus(status = null) {
   const ready = state.keyConfigured && Boolean(state.config.provider.model);
   $('readyDot').classList.toggle('ready', ready);
   $('readyLabel').textContent = ready ? '可以开始对话' : '等待模型配置';
-  $('versionLabel').textContent = 'Syna Live 0.6.1';
+  $('versionLabel').textContent = 'Syna Live 0.6.2';
   $('quickProvider').textContent = ready ? (state.providers.find((item) => item.id === state.config.provider.id)?.name || '已配置') : '未配置';
   $('quickVoice').textContent = state.config.voice.enabled ? '开启' : '关闭';
   const live = status?.live;
@@ -374,6 +375,17 @@ async function syncMessages() {
   messageSignature = signature;
   state.messages = payload.messages;
   renderMessages();
+}
+
+async function syncBackgroundSpeech() {
+  const payload = await api('/api/speech/next');
+  const item = payload.item;
+  if (!item) return;
+  if (!backgroundSpeechGenerations.has(item.groupId)) {
+    backgroundSpeechGenerations.set(item.groupId, speechGeneration);
+    setTimeout(() => backgroundSpeechGenerations.delete(item.groupId), 120000);
+  }
+  queueSpeech(item.text, backgroundSpeechGenerations.get(item.groupId));
 }
 
 async function speak(text) {
@@ -738,5 +750,6 @@ $('testAsrBtn').addEventListener('click', async () => {
 load().then(() => {
   messageSignature = state.messages.map(({ id }) => id).join('|');
   setInterval(() => syncMessages().catch(() => {}), 1000);
+  setInterval(() => syncBackgroundSpeech().catch(() => {}), 300);
   if (state.config.vision.enabled) toggleVision().catch((error) => { $('visionStatus').textContent = error.message; });
 }).catch((error) => toast(error.message, true));
