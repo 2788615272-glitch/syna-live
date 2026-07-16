@@ -24,7 +24,7 @@ async function showCompanion() {
     resizable: true,
     hasShadow: false,
     title: 'Syna Desktop Companion',
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true }
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false }
   });
   companionWindow.setAlwaysOnTop(true, 'floating');
   companionWindow.on('closed', () => { companionWindow = null; });
@@ -78,7 +78,8 @@ app.whenReady().then(async () => {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      backgroundThrottling: false
     }
   });
   window.webContents.setWindowOpenHandler(({ url }) => {

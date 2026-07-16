@@ -17,6 +17,8 @@ export class CompanionRuntime {
     this.liveAdapter = liveAdapter;
     this.busy = false;
     this.lastVisionReactionAt = 0;
+    this.lastConversationAt = 0;
+    this.firstVisionAt = 0;
     this.latestVisionFrame = '';
     this.speechQueue = [];
   }
@@ -32,6 +34,8 @@ export class CompanionRuntime {
   async analyzeVision(dataUrl) {
     const config = this.store.getConfig();
     if (!config.vision.enabled) return { enabled: false };
+    const now = Date.now();
+    this.firstVisionAt ||= now;
     const previousVisionFrame = this.latestVisionFrame;
     this.latestVisionFrame = dataUrl;
     if (config.vision.mode === 'single') {
@@ -45,7 +49,7 @@ export class CompanionRuntime {
       apiKey: this.vault.get('providerApiKey'),
       temperature: 0.2,
       messages: [
-        { role: 'system', content: '你是 Syna 的视觉皮层。只根据画面返回 JSON：{"summary":"一句客观画面概括","salience":0到1,"suggestedReply":"值得主动说话时的一句自然反应，否则空字符串"}。不要输出 Markdown。' },
+        { role: 'system', content: `你是 ${config.character.name} 的视觉皮层。只根据画面返回 JSON：{"summary":"一句客观画面概括","salience":0到1,"suggestedReply":"符合角色性格、可自然说出口的一句短评"}。除非画面无法辨认，否则 suggestedReply 不要留空。角色性格：${config.character.personality}。不要输出 Markdown。` },
         { role: 'user', content: [{ type: 'text', text: '观察这些按时间排列的桌面画面，关注明显变化、正在进行的任务和可能值得提醒的事情。' }, ...visionFrames.map((url) => ({ type: 'image_url', image_url: { url } }))] }
       ]
     });
@@ -56,19 +60,24 @@ export class CompanionRuntime {
       summary: String(result.summary || raw).trim().slice(0, 1200),
       salience: Math.min(1, Math.max(0, Number(result.salience) || 0)),
       suggestedReply: String(result.suggestedReply || '').trim().slice(0, 500),
-      updatedAt: Date.now()
+      updatedAt: now
     };
     const previousSummary = this.store.getStageState().vision?.summary || '';
-    const shouldReact = config.vision.proactive && vision.salience >= 0.65 && Boolean(vision.suggestedReply)
-      && vision.summary !== previousSummary && Date.now() - this.lastVisionReactionAt > 45000 && !this.busy;
+    const lastActivityAt = Math.max(this.lastVisionReactionAt, this.lastConversationAt) || this.firstVisionAt;
+    const eventReaction = vision.salience >= 0.62 && vision.summary !== previousSummary
+      && now - this.lastVisionReactionAt > 35000 && now - this.lastConversationAt > 12000;
+    const ambientReaction = vision.salience >= 0.25
+      && now - lastActivityAt >= config.vision.proactiveIntervalSeconds * 1000;
+    const shouldReact = config.vision.proactive && Boolean(vision.suggestedReply)
+      && (eventReaction || ambientReaction) && !this.busy;
     this.store.setStageState({ vision });
     let reaction = null;
     if (shouldReact) {
-      this.lastVisionReactionAt = Date.now();
+      this.lastVisionReactionAt = now;
       const expression = pickAutoExpression(vision.suggestedReply, config.stage);
       const message = await this.store.appendMessage({ role: 'assistant', content: vision.suggestedReply, source: 'vision' });
       this.store.setStageState({ subtitle: vision.suggestedReply, speaking: true, expression, vision });
-      reaction = { text: vision.suggestedReply, expression, message };
+      reaction = { text: vision.suggestedReply, expression, message, reason: eventReaction ? 'event' : 'ambient' };
     }
     return { enabled: true, vision, shouldReact, reaction };
   }
@@ -97,6 +106,7 @@ export class CompanionRuntime {
     if (!message) throw new Error('消息不能为空');
     if (this.busy) throw new Error('Syna 正在回复，请稍等');
     this.busy = true;
+    this.lastConversationAt = Date.now();
     const startedAt = Date.now();
     try {
       yield { type: 'start', startedAt };
@@ -166,6 +176,7 @@ export class CompanionRuntime {
       yield { type: 'done', message: saved, expression: selectedExpression, elapsedMs: Date.now() - startedAt, firstTokenMs: firstTokenAt ? firstTokenAt - startedAt : null };
     } finally {
       this.busy = false;
+      this.lastConversationAt = Date.now();
     }
   }
 

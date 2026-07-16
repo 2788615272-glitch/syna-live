@@ -122,6 +122,7 @@ function fillForm() {
   setValue('visionMode', c.vision.mode);
   setValue('visionProactive', c.vision.proactive);
   setValue('visionInterval', c.vision.intervalSeconds);
+  setValue('visionProactiveInterval', c.vision.proactiveIntervalSeconds);
   setValue('stageUrl', state.stageUrl);
   $('temperatureValue').textContent = Number(c.provider.temperature).toFixed(1);
   $('voiceRateValue').textContent = Number(c.voice.rate).toFixed(2);
@@ -171,7 +172,7 @@ function collectConfig() {
       maxMessages: Number($('maxMessages').value),
       notes: $('memoryNotes').value
     },
-    vision: { enabled: $('visionEnabled').checked, mode: $('visionMode').value, proactive: $('visionProactive').checked, intervalSeconds: Number($('visionInterval').value) },
+    vision: { enabled: $('visionEnabled').checked, mode: $('visionMode').value, proactive: $('visionProactive').checked, intervalSeconds: Number($('visionInterval').value), proactiveIntervalSeconds: Number($('visionProactiveInterval').value) },
     live: {
       ...c.live,
       roomId: $('liveRoomId').value,
@@ -217,6 +218,7 @@ function updateVoiceMeta() {
 function updateVisionMeta() {
   const single = $('visionMode').value === 'single';
   $('visionProactive').disabled = single;
+  $('visionProactiveInterval').disabled = single;
   $('visionModeHint').textContent = single
     ? '只调用一次主脑：最新截图会随下一条用户消息发送，不支持后台主动发言。'
     : '经典双脑结构：视觉脑持续观察并生成摘要，对话脑读取摘要，也可主动反应。';
@@ -328,7 +330,7 @@ function updateStatus(status = null) {
   const ready = state.keyConfigured && Boolean(state.config.provider.model);
   $('readyDot').classList.toggle('ready', ready);
   $('readyLabel').textContent = ready ? '可以开始对话' : '等待模型配置';
-  $('versionLabel').textContent = 'Syna Live 0.6.2';
+  $('versionLabel').textContent = 'Syna Live 0.7.0';
   $('quickProvider').textContent = ready ? (state.providers.find((item) => item.id === state.config.provider.id)?.name || '已配置') : '未配置';
   $('quickVoice').textContent = state.config.voice.enabled ? '开启' : '关闭';
   const live = status?.live;

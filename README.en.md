@@ -13,6 +13,7 @@ Syna Live is a local-first AI companion and livestream avatar studio. Combine ch
 - Streaming replies, early first-segment TTS, and interruption when the user starts speaking
 - Always-on-top desktop companion with text, push-to-talk, and continuous listening modes
 - Switchable single-brain direct-image vision or dual-brain continuous visual context with proactive reactions
+- Event-driven visual reactions plus configurable ambient remarks during stable scenes, even while the main window is in the background
 - Shared conversation history between the main console and floating desktop companion
 - Separate encrypted ASR and TTS credentials with OpenAI-compatible audio endpoints
 - Native Volcengine TTS and BigModel ASR support with AppID, token, cluster, voice, and resource fields

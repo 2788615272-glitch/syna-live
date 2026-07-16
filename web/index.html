@@ -168,6 +168,7 @@
           <label><span>视觉架构</span><select id="visionMode"><option value="dual">双脑：视觉脑总结后交给对话脑（推荐）</option><option value="single">单脑：对话时直接读取最新截图</option></select><small id="visionModeHint"></small></label>
           <label class="check-row"><span><strong>允许视觉脑主动反应</strong><small>仅双脑模式可用；截图只发送给你配置的模型，不保存到项目目录。</small></span><input id="visionProactive" type="checkbox"></label>
           <label><span>观察间隔（秒）</span><input id="visionInterval" type="number" min="3" max="60" step="1"></label>
+          <label><span>空闲主动开口间隔（秒）</span><input id="visionProactiveInterval" type="number" min="30" max="300" step="5"><small>画面没有大变化时，也会在安静一段时间后自然聊一句。</small></label>
           <div class="privacy-strip"><i data-lucide="monitor"></i><span id="visionStatus">视觉尚未启动</span></div>
           <div class="vision-summary" id="visionSummary">暂无画面分析</div>
           <button class="button primary" id="startVisionBtn"><i data-lucide="scan-eye"></i><span>启动桌面视觉</span></button>

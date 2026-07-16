@@ -47,7 +47,7 @@ export function defaultConfig() {
       maxMessages: 30,
       notes: ''
     },
-    vision: { enabled: false, mode: 'dual', intervalSeconds: 6, proactive: true },
+    vision: { enabled: false, mode: 'dual', intervalSeconds: 6, proactive: true, proactiveIntervalSeconds: 75 },
     live: {
       platform: 'bilibili',
       enabled: false,

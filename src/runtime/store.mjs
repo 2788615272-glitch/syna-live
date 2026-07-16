@@ -136,7 +136,8 @@ export class LocalStore {
         enabled: vision.enabled === true,
         mode: ['single', 'dual'].includes(vision.mode) ? vision.mode : base.vision.mode,
         intervalSeconds: number(vision.intervalSeconds, 6, 3, 60),
-        proactive: vision.proactive !== false
+        proactive: vision.proactive !== false,
+        proactiveIntervalSeconds: number(vision.proactiveIntervalSeconds, base.vision.proactiveIntervalSeconds, 30, 300)
       },
       live: {
         platform: 'bilibili',

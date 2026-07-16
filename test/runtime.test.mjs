@@ -79,6 +79,26 @@ test('vision analysis stores screen context and can produce a proactive reaction
   assert.equal(request.messages[1].content[1].type, 'image_url');
 });
 
+test('stable video context can trigger an ambient proactive remark after idle time', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-ambient-vision-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = await new LocalStore(dir).init();
+  await store.saveConfig({ ...store.getConfig(), vision: { enabled: true, mode: 'dual', intervalSeconds: 6, proactive: true } });
+  store.setStageState({ vision: { summary: '用户正在观看一段视频', salience: 0.35, updatedAt: Date.now() - 6000 } });
+  const runtime = new CompanionRuntime({
+    store,
+    vault: { has: () => true, get: () => 'key' },
+    modelAdapter: { complete: async () => JSON.stringify({ summary: '用户正在观看一段视频', salience: 0.35, suggestedReply: '这个片段的气氛还挺有意思。' }) },
+    liveAdapter: { getStatus: () => ({ connected: false }), disconnect: () => {} }
+  });
+  runtime.lastVisionReactionAt = Date.now() - 120000;
+  const result = await runtime.analyzeVision('data:image/jpeg;base64,AA==');
+  assert.equal(result.shouldReact, true);
+  assert.equal(result.reaction.text, '这个片段的气氛还挺有意思。');
+  const immediateRepeat = await runtime.analyzeVision('data:image/jpeg;base64,AQ==');
+  assert.equal(immediateRepeat.shouldReact, false);
+});
+
 test('dual-brain chat explicitly trusts fresh vision instead of claiming it cannot see', async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-vision-chat-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
