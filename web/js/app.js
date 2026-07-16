@@ -66,6 +66,8 @@ let speechGeneration = 0;
 let cancelCurrentSpeech;
 let pendingSpeechMessage = '';
 const backgroundSpeechGenerations = new Map();
+const speechOwner = `dashboard-${crypto.randomUUID()}`;
+let globalSpeechGeneration = 0;
 function toast(message, error = false) {
   const node = $('toast');
   node.textContent = message;
@@ -330,7 +332,7 @@ function updateStatus(status = null) {
   const ready = state.keyConfigured && Boolean(state.config.provider.model);
   $('readyDot').classList.toggle('ready', ready);
   $('readyLabel').textContent = ready ? '可以开始对话' : '等待模型配置';
-  $('versionLabel').textContent = 'Syna Live 0.7.0';
+  $('versionLabel').textContent = 'Syna Live 0.7.1';
   $('quickProvider').textContent = ready ? (state.providers.find((item) => item.id === state.config.provider.id)?.name || '已配置') : '未配置';
   $('quickVoice').textContent = state.config.voice.enabled ? '开启' : '关闭';
   const live = status?.live;
@@ -384,19 +386,23 @@ async function syncBackgroundSpeech() {
   const item = payload.item;
   if (!item) return;
   if (!backgroundSpeechGenerations.has(item.groupId)) {
+    await claimGlobalSpeech();
+    interruptLocalSpeech();
     backgroundSpeechGenerations.set(item.groupId, speechGeneration);
     setTimeout(() => backgroundSpeechGenerations.delete(item.groupId), 120000);
   }
   queueSpeech(item.text, backgroundSpeechGenerations.get(item.groupId));
 }
 
-async function speak(text) {
+async function speak(text, generation = speechGeneration) {
+  if (generation !== speechGeneration) return;
   if (!state.config.voice.enabled) {
     await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) });
     return;
   }
   if (state.config.voice.outputMode !== 'system') {
     const payload = await api('/api/tts/synthesize', { method: 'POST', body: JSON.stringify({ text: text.replace(/^\[[^\]]+\]\s*/, '') }) });
+    if (generation !== speechGeneration) return;
     const audio = new Audio(payload.dataUrl);
     currentVoiceAudio = audio;
     await new Promise((resolve, reject) => {
@@ -422,6 +428,7 @@ async function speak(text) {
     await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) });
     return;
   }
+  if (generation !== speechGeneration) return;
   speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text.replace(/^\[[^\]]+\]\s*/, ''));
   utterance.lang = state.config.voice.language;
@@ -438,11 +445,29 @@ async function speak(text) {
   await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) }).catch(() => {});
 }
 
+async function claimGlobalSpeech() {
+  const payload = await api('/api/speech/claim', { method: 'POST', body: JSON.stringify({ owner: speechOwner }) });
+  globalSpeechGeneration = payload.control.generation;
+  return globalSpeechGeneration;
+}
+
+async function syncSpeechControl() {
+  const payload = await api('/api/speech/control');
+  if (payload.control.generation <= globalSpeechGeneration) return;
+  globalSpeechGeneration = payload.control.generation;
+  if (payload.control.owner !== speechOwner) interruptLocalSpeech();
+}
+
 function queueSpeech(text, generation = speechGeneration) {
-  speechPlayback = speechPlayback.catch(() => {}).then(() => generation === speechGeneration ? speak(text) : undefined).catch((error) => toast(error.message, true));
+  speechPlayback = speechPlayback.catch(() => {}).then(() => generation === speechGeneration ? speak(text, generation) : undefined).catch((error) => toast(error.message, true));
 }
 
 function interruptSpeech() {
+  claimGlobalSpeech().catch(() => {});
+  interruptLocalSpeech();
+}
+
+function interruptLocalSpeech() {
   speechGeneration += 1;
   cancelCurrentSpeech?.();
   currentVoiceAudio?.pause();
@@ -669,6 +694,7 @@ async function analyzeVisionFrame() {
     $('visionSummary').textContent = result.vision?.summary || '画面已观察，暂无摘要';
     $('visionStatus').textContent = `视觉运行中 · 显著度 ${Number(result.vision?.salience || 0).toFixed(2)}`;
     if (result.reaction) {
+      interruptSpeech();
       state.messages.push(result.reaction.message);
       renderMessages();
       $('stageSubtitle').textContent = result.reaction.text;
@@ -753,5 +779,6 @@ load().then(() => {
   messageSignature = state.messages.map(({ id }) => id).join('|');
   setInterval(() => syncMessages().catch(() => {}), 1000);
   setInterval(() => syncBackgroundSpeech().catch(() => {}), 300);
+  setInterval(() => syncSpeechControl().catch(() => {}), 250);
   if (state.config.vision.enabled) toggleVision().catch((error) => { $('visionStatus').textContent = error.message; });
 }).catch((error) => toast(error.message, true));

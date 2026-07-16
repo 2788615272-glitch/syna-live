@@ -165,3 +165,19 @@ test('Bilibili auto replies enqueue their streamed speech for TTS playback', asy
   assert.equal(speech.source, 'bilibili');
   assert.match(speech.text, /你好呀/);
 });
+
+test('new speech owner invalidates playback in every other window', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-speech-owner-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = await new LocalStore(dir).init();
+  const runtime = new CompanionRuntime({
+    store,
+    vault: { has: () => true, get: () => 'key' },
+    modelAdapter: {},
+    liveAdapter: { getStatus: () => ({ connected: false }), disconnect: () => {} }
+  });
+  const first = runtime.claimSpeech('dashboard');
+  const second = runtime.claimSpeech('companion');
+  assert.equal(second.generation, first.generation + 1);
+  assert.equal(runtime.getSpeechControl().owner, 'companion');
+});

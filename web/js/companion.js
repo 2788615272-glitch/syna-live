@@ -16,6 +16,8 @@ let cancelCurrentSpeech;
 let pendingSpeechMessage = '';
 let messages = [];
 let messageSignature = '';
+const speechOwner = `companion-${crypto.randomUUID()}`;
+let globalSpeechGeneration = 0;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -100,6 +102,11 @@ function startRecognition(manual = false) {
 }
 
 function interruptSpeech() {
+  claimGlobalSpeech().catch(() => {});
+  interruptLocalSpeech();
+}
+
+function interruptLocalSpeech() {
   speechGeneration += 1;
   cancelCurrentSpeech?.();
   currentVoiceAudio?.pause();
@@ -107,15 +114,30 @@ function interruptSpeech() {
   api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) }).catch(() => {});
 }
 
-function queueSpeech(text, generation = speechGeneration) {
-  speechPlayback = speechPlayback.catch(() => {}).then(() => generation === speechGeneration ? speak(text) : undefined).catch((error) => setStatus(error.message));
+async function claimGlobalSpeech() {
+  const payload = await api('/api/speech/claim', { method: 'POST', body: JSON.stringify({ owner: speechOwner }) });
+  globalSpeechGeneration = payload.control.generation;
+  return globalSpeechGeneration;
 }
 
-async function speak(text) {
+async function syncSpeechControl() {
+  const payload = await api('/api/speech/control');
+  if (payload.control.generation <= globalSpeechGeneration) return;
+  globalSpeechGeneration = payload.control.generation;
+  if (payload.control.owner !== speechOwner) interruptLocalSpeech();
+}
+
+function queueSpeech(text, generation = speechGeneration) {
+  speechPlayback = speechPlayback.catch(() => {}).then(() => generation === speechGeneration ? speak(text, generation) : undefined).catch((error) => setStatus(error.message));
+}
+
+async function speak(text, generation = speechGeneration) {
+  if (generation !== speechGeneration) return;
   if (!config.voice.enabled) { scheduleAutoListen(); return; }
   stopRecognition();
   if (config.voice.outputMode !== 'system') {
     const payload = await api('/api/tts/synthesize', { method: 'POST', body: JSON.stringify({ text: text.replace(/^\[[^\]]+\]\s*/, '') }) });
+    if (generation !== speechGeneration) return;
     const audio = new Audio(payload.dataUrl);
     currentVoiceAudio = audio;
     await new Promise((resolve, reject) => {
@@ -137,6 +159,7 @@ async function speak(text) {
     return;
   }
   if (!('speechSynthesis' in window)) { scheduleAutoListen(); return; }
+  if (generation !== speechGeneration) return;
   speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text.replace(/^\[[^\]]+\]\s*/, ''));
   utterance.lang = config.voice.language;
@@ -241,6 +264,7 @@ async function load() {
   await refreshStage();
   setInterval(refreshStage, 400);
   setInterval(() => refreshMessages().catch(() => {}), 1000);
+  setInterval(() => syncSpeechControl().catch(() => {}), 250);
 }
 
 load().catch((error) => { $('reply').textContent = error.message; });

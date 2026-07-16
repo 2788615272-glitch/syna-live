@@ -29,9 +29,19 @@ test('local server protects data and diagnostics are redacted', async (t) => {
   assert.equal(JSON.stringify(bootstrap).includes('private-tts-key'), false);
   assert.equal(JSON.stringify(bootstrap).includes('private-volc-token'), false);
   assert.equal(JSON.stringify(bootstrap).includes(dir), false);
+  assert.equal(JSON.stringify(bootstrap).includes('providerApiKey'), false);
+  assert.equal(JSON.stringify(bootstrap).includes('volcAccessToken'), false);
+  assert.equal(JSON.stringify(bootstrap).includes('SESSDATA'), false);
+  assert.equal(JSON.stringify(bootstrap).includes('bili_jct'), false);
   const diagnostics = await fetch(`http://127.0.0.1:${server.port}/api/diagnostics`, { headers }).then((response) => response.json());
   assert.equal(JSON.stringify(diagnostics).includes(secret), false);
   assert.equal(JSON.stringify(diagnostics).includes(dir), false);
+  const speechControlUnauthorized = await fetch(`http://127.0.0.1:${server.port}/api/speech/control`);
+  assert.equal(speechControlUnauthorized.status, 401);
+  const claimed = await fetch(`http://127.0.0.1:${server.port}/api/speech/claim`, {
+    method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ owner: 'privacy-test' })
+  }).then((response) => response.json());
+  assert.equal(claimed.control.owner, 'privacy-test');
 });
 
 test('desktop companion command stays behind the local session token', async (t) => {

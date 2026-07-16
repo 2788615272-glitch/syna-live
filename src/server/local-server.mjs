@@ -77,7 +77,15 @@ async function serveFile(res, file) {
 }
 
 function publicConfig(config) {
-  return structuredClone(config);
+  const secretName = /(?:api.?key|access.?token|secret|password|cookie|sessdata|bili_jct)/i;
+  const sanitize = (value) => {
+    if (Array.isArray(value)) return value.map(sanitize);
+    if (!value || typeof value !== 'object') return value;
+    return Object.fromEntries(Object.entries(value)
+      .filter(([key]) => !secretName.test(key))
+      .map(([key, item]) => [key, sanitize(item)]));
+  };
+  return sanitize(structuredClone(config));
 }
 
 export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCommand = () => {} }) {
@@ -114,7 +122,7 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
           status: runtime.status(),
           messages: store.getMessages(),
           stageUrl: `http://127.0.0.1:${address.port}/stage?stageToken=${stageToken}`,
-          version: '0.7.0'
+          version: '0.7.1'
         });
       }
 
@@ -124,6 +132,15 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
 
       if (req.method === 'GET' && pathname === '/api/speech/next') {
         return json(res, 200, { ok: true, item: runtime.takeQueuedSpeech() });
+      }
+
+      if (req.method === 'GET' && pathname === '/api/speech/control') {
+        return json(res, 200, { ok: true, control: runtime.getSpeechControl() });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/speech/claim') {
+        const input = await body(req, 8 * 1024);
+        return json(res, 200, { ok: true, control: runtime.claimSpeech(input.owner) });
       }
 
       if (req.method === 'PUT' && pathname === '/api/config') {
@@ -261,7 +278,7 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
         return json(res, 200, {
           ok: true,
           diagnostics: {
-            version: '0.7.0',
+            version: '0.7.1',
             platform: process.platform,
             provider: config.provider.id,
             providerConfigured: vault.has('providerApiKey') && Boolean(config.provider.model),

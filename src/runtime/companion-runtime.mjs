@@ -21,6 +21,7 @@ export class CompanionRuntime {
     this.firstVisionAt = 0;
     this.latestVisionFrame = '';
     this.speechQueue = [];
+    this.speechControl = { generation: 0, owner: '', updatedAt: 0 };
   }
 
   status() {
@@ -99,6 +100,19 @@ export class CompanionRuntime {
   takeQueuedSpeech() {
     const item = this.speechQueue.shift();
     return item ? { ...item } : null;
+  }
+
+  claimSpeech(owner = '') {
+    this.speechControl = {
+      generation: this.speechControl.generation + 1,
+      owner: String(owner || '').slice(0, 40),
+      updatedAt: Date.now()
+    };
+    return this.getSpeechControl();
+  }
+
+  getSpeechControl() {
+    return { ...this.speechControl };
   }
 
   async *chatStream(content, source = 'chat') {
