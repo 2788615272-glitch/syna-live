@@ -327,14 +327,14 @@ function updateStatus(status = null) {
   const ready = state.keyConfigured && Boolean(state.config.provider.model);
   $('readyDot').classList.toggle('ready', ready);
   $('readyLabel').textContent = ready ? '可以开始对话' : '等待模型配置';
-  $('versionLabel').textContent = 'Syna Live 0.6.0';
+  $('versionLabel').textContent = 'Syna Live 0.6.1';
   $('quickProvider').textContent = ready ? (state.providers.find((item) => item.id === state.config.provider.id)?.name || '已配置') : '未配置';
   $('quickVoice').textContent = state.config.voice.enabled ? '开启' : '关闭';
   const live = status?.live;
   if (live) {
-    $('liveStatus').textContent = live.connected ? '已连接' : (live.error || '未连接');
+    $('liveStatus').textContent = live.connecting ? '连接中…' : live.connected ? (live.liveStatus === 0 ? '已连接（未开播）' : '已连接') : (live.error || '未连接');
     $('liveStatus').classList.toggle('connected', live.connected);
-    $('quickLive').textContent = live.connected ? `房间 ${live.roomId}` : '未连接';
+    $('quickLive').textContent = live.connected ? `房间 ${live.roomId}${live.liveStatus === 0 ? ' · 未开播' : ''}` : '未连接';
   }
 }
 

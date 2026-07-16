@@ -1,6 +1,6 @@
 {
   "name": "syna-live",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Local-first customizable AI companion and livestream avatar.",
   "type": "module",
   "main": "src/electron.mjs",
@@ -27,7 +27,7 @@
     "dist:win": "electron-builder --win nsis portable"
   },
   "dependencies": {
-    "bilibili-live-ws": "^6.3.1",
+    "bilibili-live-danmaku": "^0.7.16",
     "lucide": "^0.468.0",
     "ws": "^8.21.1"
   },
