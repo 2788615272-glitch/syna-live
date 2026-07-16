@@ -18,6 +18,8 @@ test('default profile is public and usable', async (t) => {
   assert.equal(config.voice.outputMode, 'system');
   assert.equal(config.voice.volcano.cluster, 'volcano_icl');
   assert.equal(config.voice.volcano.asrResourceId, 'volc.seedasr.sauc.duration');
+  assert.equal(config.vision.enabled, false);
+  assert.equal(config.stage.expressionLabels.wink, '眨眼');
   assert.equal(config.stage.activeExpression, 'normal');
   assert.deepEqual(Object.keys(config.stage.expressions), ['normal', 'wink', 'angry', 'confused', 'observe', 'speechless']);
   const privateNickname = String.fromCodePoint(22235, 20998, 20043, 19968, 39640, 25163);

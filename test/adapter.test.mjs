@@ -25,4 +25,20 @@ test('Kimi requests always use the model-required temperature of 1', async (t) =
   });
 
   assert.equal(requestBody.temperature, 1);
+  assert.deepEqual(requestBody.thinking, { type: 'disabled' });
+});
+
+test('Kimi streaming disables thinking and yields text deltas immediately', async (t) => {
+  const originalFetch = globalThis.fetch;
+  let requestBody;
+  globalThis.fetch = async (_url, options) => {
+    requestBody = JSON.parse(options.body);
+    return new Response('data: {"choices":[{"delta":{"content":"你"}}]}\n\ndata: {"choices":[{"delta":{"content":"好"}}]}\n\ndata: [DONE]\n\n', { status: 200 });
+  };
+  t.after(() => { globalThis.fetch = originalFetch; });
+  const chunks = [];
+  for await (const chunk of new OpenAICompatibleAdapter().stream({ id: 'moonshot', baseUrl: 'https://api.moonshot.cn/v1', model: 'kimi-k2.5', apiKey: 'key', messages: [] })) chunks.push(chunk);
+  assert.deepEqual(chunks, ['你', '好']);
+  assert.deepEqual(requestBody.thinking, { type: 'disabled' });
+  assert.equal(requestBody.stream, true);
 });

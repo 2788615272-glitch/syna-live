@@ -5,10 +5,15 @@ const $ = (id) => document.getElementById(id);
 const root = $('companion');
 let config;
 let busy = false;
+let modelStreaming = false;
 let mode = 'text';
 let speechInput;
 let currentVoiceAudio;
 let lastAvatar = '';
+let speechPlayback = Promise.resolve();
+let speechGeneration = 0;
+let cancelCurrentSpeech;
+let pendingSpeechMessage = '';
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -18,6 +23,22 @@ async function api(path, options = {}) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.ok === false) throw new Error(payload.error || '请求失败');
   return payload;
+}
+
+async function* streamApi(path, payload) {
+  const response = await fetch(path, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  if (!response.ok || !response.body) throw new Error(`流式请求失败 (${response.status})`);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const lines = buffer.split(/\r?\n/);
+    buffer = done ? '' : lines.pop() || '';
+    for (const line of lines) if (line.trim()) yield JSON.parse(line);
+    if (done) break;
+  }
 }
 
 function setStatus(text) {
@@ -45,9 +66,21 @@ function scheduleAutoListen() {
   setTimeout(() => startRecognition(), 450);
 }
 
-function startRecognition() {
-  if (!speechInput || speechInput.active || busy) return;
+function startRecognition(manual = false) {
+  if (!speechInput || speechInput.active || (!manual && modelStreaming)) return;
   speechInput.start({ continuous: mode === 'auto', language: config.voice.language }).catch((error) => setStatus(error.message));
+}
+
+function interruptSpeech() {
+  speechGeneration += 1;
+  cancelCurrentSpeech?.();
+  currentVoiceAudio?.pause();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) }).catch(() => {});
+}
+
+function queueSpeech(text, generation = speechGeneration) {
+  speechPlayback = speechPlayback.catch(() => {}).then(() => generation === speechGeneration ? speak(text) : undefined).catch((error) => setStatus(error.message));
 }
 
 async function speak(text) {
@@ -55,13 +88,24 @@ async function speak(text) {
   stopRecognition();
   if (config.voice.outputMode !== 'system') {
     const payload = await api('/api/tts/synthesize', { method: 'POST', body: JSON.stringify({ text: text.replace(/^\[[^\]]+\]\s*/, '') }) });
-    currentVoiceAudio?.pause();
-    currentVoiceAudio = new Audio(payload.dataUrl);
-    currentVoiceAudio.onended = currentVoiceAudio.onerror = async () => {
-      await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) }).catch(() => {});
-      scheduleAutoListen();
-    };
-    await currentVoiceAudio.play();
+    const audio = new Audio(payload.dataUrl);
+    currentVoiceAudio = audio;
+    await new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (error) => {
+        if (settled) return;
+        settled = true;
+        error ? reject(error) : resolve();
+      };
+      cancelCurrentSpeech = () => { audio.pause(); finish(); };
+      audio.onended = () => finish();
+      audio.onerror = () => finish(new Error('语音音频播放失败'));
+      audio.play().catch(finish);
+    }).finally(() => {
+      if (currentVoiceAudio === audio) currentVoiceAudio = undefined;
+      cancelCurrentSpeech = undefined;
+    });
+    await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) }).catch(() => {});
     return;
   }
   if (!('speechSynthesis' in window)) { scheduleAutoListen(); return; }
@@ -70,28 +114,46 @@ async function speak(text) {
   utterance.lang = config.voice.language;
   utterance.rate = config.voice.rate;
   utterance.pitch = config.voice.pitch;
-  utterance.onend = utterance.onerror = async () => {
-    await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) }).catch(() => {});
-    scheduleAutoListen();
-  };
-  speechSynthesis.speak(utterance);
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    cancelCurrentSpeech = () => { speechSynthesis.cancel(); finish(); };
+    utterance.onend = utterance.onerror = finish;
+    speechSynthesis.speak(utterance);
+  });
+  cancelCurrentSpeech = undefined;
+  await api('/api/stage/speaking', { method: 'POST', body: JSON.stringify({ speaking: false }) }).catch(() => {});
 }
 
 async function sendMessage(message) {
   const content = String(message || '').trim();
-  if (!content || busy) return;
+  if (!content) return;
+  if (busy) { pendingSpeechMessage = content; interruptSpeech(); return; }
+  interruptSpeech();
+  const replySpeechGeneration = speechGeneration;
   busy = true;
+  modelStreaming = true;
   stopRecognition();
-  $('reply').textContent = '正在想……';
+  $('reply').textContent = '';
   try {
-    const payload = await api('/api/chat', { method: 'POST', body: JSON.stringify({ message: content }) });
-    $('reply').textContent = payload.message.content;
-    await speak(payload.message.content);
+    for await (const event of streamApi('/api/chat/stream', { message: content })) {
+      if (event.type === 'error') throw new Error(event.error);
+      if (event.type === 'token') $('reply').textContent += event.text;
+      if (event.type === 'speech') queueSpeech(event.text, replySpeechGeneration);
+      if (event.type === 'expression') setAvatar(config.stage, { expression: event.expression, speaking: true });
+    }
+    modelStreaming = false;
+    await speechPlayback;
   } catch (error) {
     $('reply').textContent = error.message;
   } finally {
+    modelStreaming = false;
     busy = false;
-    scheduleAutoListen();
+    if (pendingSpeechMessage) {
+      const nextMessage = pendingSpeechMessage;
+      pendingSpeechMessage = '';
+      setTimeout(() => sendMessage(nextMessage), 0);
+    } else scheduleAutoListen();
   }
 }
 
@@ -108,10 +170,18 @@ function setMode(nextMode) {
   }
 }
 
-speechInput = createSpeechInput({ api, getMode: () => config?.voice?.asrMode || 'browser', onText: sendMessage, onStatus: setStatus });
+speechInput = createSpeechInput({
+  api,
+  getMode: () => config?.voice?.asrMode || 'browser',
+  onText: (text) => { interruptSpeech(); sendMessage(text); },
+  onStatus: setStatus
+});
 
 document.querySelectorAll('[data-mode]').forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
-$('talkBtn').addEventListener('click', () => speechInput.active ? stopRecognition() : startRecognition());
+$('talkBtn').addEventListener('click', () => {
+  if (speechInput.active) stopRecognition();
+  else { interruptSpeech(); startRecognition(true); }
+});
 $('chatForm').addEventListener('submit', (event) => {
   event.preventDefault();
   const message = $('chatInput').value;

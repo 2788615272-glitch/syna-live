@@ -51,6 +51,7 @@ export class LocalStore {
     const voice = input.voice || {};
     const stage = input.stage || {};
     const memory = input.memory || {};
+    const vision = input.vision || {};
     const live = input.live || {};
     return {
       version: 1,
@@ -99,6 +100,7 @@ export class LocalStore {
         talkingAvatar: text(stage.talkingAvatar, base.stage.talkingAvatar, 500),
         activeExpression: ['normal', 'wink', 'angry', 'confused', 'observe', 'speechless'].includes(stage.activeExpression) ? stage.activeExpression : base.stage.activeExpression,
         expressions: Object.fromEntries(Object.entries(base.stage.expressions).map(([name, source]) => [name, text(stage.expressions?.[name], source, 500)])),
+        expressionLabels: Object.fromEntries(Object.entries(base.stage.expressionLabels).map(([name, label]) => [name, text(stage.expressionLabels?.[name], label, 32)])),
         avatarScale: number(stage.avatarScale, 1, 0.5, 1.8),
         subtitleEnabled: stage.subtitleEnabled !== false
       },
@@ -106,6 +108,11 @@ export class LocalStore {
         enabled: memory.enabled !== false,
         maxMessages: Math.round(number(memory.maxMessages, 30, 4, 100)),
         notes: text(memory.notes, '', 8000)
+      },
+      vision: {
+        enabled: vision.enabled === true,
+        intervalSeconds: number(vision.intervalSeconds, 6, 3, 60),
+        proactive: vision.proactive !== false
       },
       live: {
         platform: 'bilibili',

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, safeStorage, shell, dialog, session } from 'electron';
+import { app, BrowserWindow, Menu, safeStorage, shell, dialog, session, desktopCapturer } from 'electron';
 import path from 'node:path';
 import { startLocalServer } from './server/local-server.mjs';
 import { SecretVault } from './runtime/secret-vault.mjs';
@@ -48,6 +48,10 @@ app.whenReady().then(async () => {
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
     const localPage = details.requestingUrl?.startsWith('http://127.0.0.1:');
     callback(Boolean(localPage && permission === 'media'));
+  });
+  session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
+    callback({ video: sources[0], audio: false });
   });
   const dataDir = app.getPath('userData');
   if (!safeStorage.isEncryptionAvailable()) throw new Error('系统凭据加密不可用，无法安全保存 API Key');

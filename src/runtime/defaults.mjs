@@ -38,6 +38,7 @@ export function defaultConfig() {
         observe: '/assets/syna-observe.webp',
         speechless: '/assets/syna-speechless.webp'
       },
+      expressionLabels: { normal: '平静', wink: '眨眼', angry: '生气', confused: '疑惑', observe: '观察', speechless: '无语' },
       avatarScale: 1,
       subtitleEnabled: true
     },
@@ -46,6 +47,7 @@ export function defaultConfig() {
       maxMessages: 30,
       notes: ''
     },
+    vision: { enabled: false, intervalSeconds: 6, proactive: true },
     live: {
       platform: 'bilibili',
       enabled: false,

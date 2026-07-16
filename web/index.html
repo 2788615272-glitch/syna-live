@@ -18,6 +18,7 @@
         <button class="nav-item" data-view="character"><i data-lucide="user-round-cog"></i><span>角色人设</span></button>
         <button class="nav-item" data-view="provider"><i data-lucide="brain-circuit"></i><span>模型连接</span></button>
         <button class="nav-item" data-view="voice"><i data-lucide="audio-lines"></i><span>语音</span></button>
+        <button class="nav-item" data-view="vision"><i data-lucide="eye"></i><span>视觉</span></button>
         <button class="nav-item" data-view="live"><i data-lucide="radio"></i><span>直播</span></button>
         <button class="nav-item" data-view="privacy"><i data-lucide="shield-check"></i><span>隐私与数据</span></button>
       </nav>
@@ -158,6 +159,17 @@
             <small>旧版 Syna 对应字段：VOLC_APP_ID、VOLC_ACCESS_TOKEN、VOLC_CLUSTER、VOLC_VOICE_ID、VOLC_ASR_RESOURCE_ID、VOLC_SPEED。</small>
           </section>
         </div>
+      </section>
+
+      <section class="view" id="view-vision">
+        <section class="form-section narrow">
+          <div class="section-heading"><h2>桌面视觉</h2><label class="switch"><input id="visionEnabled" type="checkbox"><span></span></label></div>
+          <label class="check-row"><span><strong>允许 Syna 观察主屏幕</strong><small>截图仅发送给你配置的模型，不保存到项目目录。</small></span><input id="visionProactive" type="checkbox"></label>
+          <label><span>观察间隔（秒）</span><input id="visionInterval" type="number" min="3" max="60" step="1"></label>
+          <div class="privacy-strip"><i data-lucide="monitor"></i><span id="visionStatus">视觉尚未启动</span></div>
+          <div class="vision-summary" id="visionSummary">暂无画面分析</div>
+          <button class="button primary" id="startVisionBtn"><i data-lucide="scan-eye"></i><span>启动桌面视觉</span></button>
+        </section>
       </section>
 
       <section class="view" id="view-live">

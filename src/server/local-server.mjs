@@ -114,14 +114,14 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
           status: runtime.status(),
           messages: store.getMessages(),
           stageUrl: `http://127.0.0.1:${address.port}/stage?stageToken=${stageToken}`,
-          version: '0.4.2'
+          version: '0.5.0'
         });
       }
 
       if (req.method === 'PUT' && pathname === '/api/config') {
         const input = await body(req);
         const current = store.getConfig();
-        const next = await store.saveConfig({ ...current, ...input, character: { ...current.character, ...input.character }, provider: { ...current.provider, ...input.provider }, voice: { ...current.voice, ...input.voice }, stage: { ...current.stage, ...input.stage }, memory: { ...current.memory, ...input.memory }, live: { ...current.live, ...input.live } });
+        const next = await store.saveConfig({ ...current, ...input, character: { ...current.character, ...input.character }, provider: { ...current.provider, ...input.provider }, voice: { ...current.voice, ...input.voice }, stage: { ...current.stage, ...input.stage }, memory: { ...current.memory, ...input.memory }, vision: { ...current.vision, ...input.vision }, live: { ...current.live, ...input.live } });
         return json(res, 200, { ok: true, config: publicConfig(next) });
       }
 
@@ -178,10 +178,30 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
         return json(res, 200, { ok: true, dataUrl: `data:${audio.mimeType};base64,${audio.data}` });
       }
 
+      if (req.method === 'POST' && pathname === '/api/vision/analyze') {
+        const input = await body(req, 8 * 1024 * 1024);
+        const dataUrl = String(input.dataUrl || '');
+        if (!/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(dataUrl)) throw new Error('视觉截图格式无效');
+        const result = await runtime.analyzeVision(dataUrl);
+        return json(res, 200, { ok: true, ...result });
+      }
+
       if (req.method === 'POST' && pathname === '/api/chat') {
         const input = await body(req, 64 * 1024);
         const message = await runtime.chat(input.message, 'chat');
         return json(res, 200, { ok: true, message, status: runtime.status() });
+      }
+
+      if (req.method === 'POST' && pathname === '/api/chat/stream') {
+        const input = await body(req, 64 * 1024);
+        res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+        try {
+          for await (const event of runtime.chatStream(input.message, input.source || 'chat')) res.write(`${JSON.stringify(event)}\n`);
+        } catch (error) {
+          res.write(`${JSON.stringify({ type: 'error', error: errorMessage(error) })}\n`);
+        }
+        res.end();
+        return;
       }
 
       if (req.method === 'POST' && pathname === '/api/companion/show') {
@@ -233,7 +253,7 @@ export async function startLocalServer({ dataDir, vault, port = 0, onCompanionCo
         return json(res, 200, {
           ok: true,
           diagnostics: {
-            version: '0.4.2',
+            version: '0.5.0',
             platform: process.platform,
             provider: config.provider.id,
             providerConfigured: vault.has('providerApiKey') && Boolean(config.provider.model),
