@@ -226,11 +226,12 @@ function updateProviderMeta() {
     link.hidden = !url;
   }
   $('keyState').textContent = state.keyConfigured ? 'Key 已安全保存' : '未配置 Key';
-  const fixedTemperature = Number.isFinite(provider.fixedTemperature) ? provider.fixedTemperature : null;
+  const kimiK25 = /^kimi-k2\.5(?:$|-)/i.test($('providerModel').value.trim());
+  const fixedTemperature = kimiK25 ? 0.6 : Number.isFinite(provider.fixedTemperature) ? provider.fixedTemperature : null;
   $('temperature').disabled = fixedTemperature !== null;
   if (fixedTemperature !== null) $('temperature').value = fixedTemperature;
   $('temperatureValue').textContent = fixedTemperature !== null ? `${fixedTemperature.toFixed(1)}（固定）` : Number($('temperature').value).toFixed(1);
-  $('temperatureHint').textContent = provider.temperatureHint || '';
+  $('temperatureHint').textContent = kimiK25 ? 'Kimi K2.5 接口要求温度固定为 0.6，应用会自动处理。' : provider.temperatureHint || '';
 }
 
 function updateAvatarPreview() {
@@ -292,7 +293,7 @@ function updateStatus(status = null) {
   const ready = state.keyConfigured && Boolean(state.config.provider.model);
   $('readyDot').classList.toggle('ready', ready);
   $('readyLabel').textContent = ready ? '可以开始对话' : '等待模型配置';
-  $('versionLabel').textContent = 'Syna Live 0.5.0';
+  $('versionLabel').textContent = 'Syna Live 0.5.1';
   $('quickProvider').textContent = ready ? (state.providers.find((item) => item.id === state.config.provider.id)?.name || '已配置') : '未配置';
   $('quickVoice').textContent = state.config.voice.enabled ? '开启' : '关闭';
   const live = status?.live;
@@ -508,6 +509,7 @@ $('providerId').addEventListener('change', () => {
   updateProviderMeta();
   window.lucide?.createIcons();
 });
+$('providerModel').addEventListener('input', updateProviderMeta);
 $('temperature').addEventListener('input', () => $('temperatureValue').textContent = Number($('temperature').value).toFixed(1));
 $('voiceRate').addEventListener('input', () => $('voiceRateValue').textContent = Number($('voiceRate').value).toFixed(2));
 $('voicePitch').addEventListener('input', () => $('voicePitchValue').textContent = Number($('voicePitch').value).toFixed(2));

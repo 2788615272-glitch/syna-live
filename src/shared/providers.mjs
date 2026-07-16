@@ -33,7 +33,7 @@ export const PROVIDERS = Object.freeze({
     baseUrl: 'https://api.moonshot.cn/v1',
     modelHint: '例如 kimi-k2-0711-preview',
     fixedTemperature: 1,
-    temperatureHint: 'Kimi 接口要求温度固定为 1，应用会自动处理。',
+    temperatureHint: 'Kimi 模型有固定温度要求，应用会按模型自动处理。',
     keyUrl: 'https://platform.moonshot.cn/console/api-keys',
     docsUrl: 'https://platform.moonshot.cn/docs/'
   },
@@ -58,7 +58,8 @@ export function resolveProvider(id) {
 
 export function resolveTemperature(providerId, model, temperature = 0.9) {
   const provider = resolveProvider(providerId);
-  if (Number.isFinite(provider.fixedTemperature) || /^kimi-k2\.5(?:$|-)/i.test(String(model || ''))) return provider.fixedTemperature ?? 1;
+  if (/^kimi-k2\.5(?:$|-)/i.test(String(model || ''))) return 0.6;
+  if (Number.isFinite(provider.fixedTemperature)) return provider.fixedTemperature;
   const value = Number(temperature);
   return Number.isFinite(value) ? Math.min(2, Math.max(0, value)) : 0.9;
 }

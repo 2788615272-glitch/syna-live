@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OpenAICompatibleAdapter } from '../src/runtime/adapters/openai-compatible.mjs';
 
-test('Kimi requests always use the model-required temperature of 1', async (t) => {
+test('Kimi K2.5 requests use the model-required temperature of 0.6', async (t) => {
   const originalFetch = globalThis.fetch;
   let requestBody;
   globalThis.fetch = async (_url, options) => {
@@ -24,7 +24,7 @@ test('Kimi requests always use the model-required temperature of 1', async (t) =
     messages: [{ role: 'user', content: 'test' }]
   });
 
-  assert.equal(requestBody.temperature, 1);
+  assert.equal(requestBody.temperature, 0.6);
   assert.deepEqual(requestBody.thinking, { type: 'disabled' });
 });
 
@@ -41,4 +41,5 @@ test('Kimi streaming disables thinking and yields text deltas immediately', asyn
   assert.deepEqual(chunks, ['你', '好']);
   assert.deepEqual(requestBody.thinking, { type: 'disabled' });
   assert.equal(requestBody.stream, true);
+  assert.equal(requestBody.temperature, 0.6);
 });
