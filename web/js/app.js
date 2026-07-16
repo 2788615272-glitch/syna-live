@@ -15,10 +15,6 @@ const state = {
   busy: false
 };
 
-const expressionNames = {
-  normal: '平静', wink: '眨眼', angry: '生气', confused: '疑惑', observe: '观察', speechless: '无语'
-};
-
 const viewMeta = {
   studio: ['陪伴台', '和你的角色实时对话'],
   character: ['角色人设', '塑造名字、关系和说话方式'],
@@ -122,6 +118,7 @@ function fillForm() {
   setValue('maxMessages', c.memory.maxMessages);
   setValue('memoryNotes', c.memory.notes);
   setValue('visionEnabled', c.vision.enabled);
+  setValue('visionMode', c.vision.mode);
   setValue('visionProactive', c.vision.proactive);
   setValue('visionInterval', c.vision.intervalSeconds);
   setValue('stageUrl', state.stageUrl);
@@ -131,6 +128,7 @@ function fillForm() {
   updateAvatarPreview();
   updateProviderMeta();
   updateVoiceMeta();
+  updateVisionMeta();
   updateStatus();
 }
 
@@ -172,7 +170,7 @@ function collectConfig() {
       maxMessages: Number($('maxMessages').value),
       notes: $('memoryNotes').value
     },
-    vision: { enabled: $('visionEnabled').checked, proactive: $('visionProactive').checked, intervalSeconds: Number($('visionInterval').value) },
+    vision: { enabled: $('visionEnabled').checked, mode: $('visionMode').value, proactive: $('visionProactive').checked, intervalSeconds: Number($('visionInterval').value) },
     live: {
       ...c.live,
       roomId: $('liveRoomId').value,
@@ -215,6 +213,14 @@ function updateVoiceMeta() {
   $('volcanoKeyState').textContent = state.voiceKeys.volcano ? 'Token 已保存' : '未配置 Token';
 }
 
+function updateVisionMeta() {
+  const single = $('visionMode').value === 'single';
+  $('visionProactive').disabled = single;
+  $('visionModeHint').textContent = single
+    ? '只调用一次主脑：最新截图会随下一条用户消息发送，不支持后台主动发言。'
+    : '经典双脑结构：视觉脑持续观察并生成摘要，对话脑读取摘要，也可主动反应。';
+}
+
 function updateProviderMeta() {
   const provider = state.providers.find((item) => item.id === $('providerId').value) || state.providers.at(-1);
   if (!provider) return;
@@ -247,8 +253,9 @@ function updateAvatarPreview() {
 function renderExpressionManager() {
   const container = $('expressionManager');
   if (!container || !state.config) return;
-  container.replaceChildren(...Object.entries(expressionNames).map(([name, label]) => {
-    label = state.config.stage.expressionLabels?.[name] || label;
+  const expressions = Object.entries(state.config.stage.expressions || {});
+  container.replaceChildren(...expressions.map(([name, source]) => {
+    const label = state.config.stage.expressionLabels?.[name] || name;
     const card = document.createElement('div');
     card.className = `expression-card${state.config.stage.activeExpression === name ? ' active' : ''}`;
     card.dataset.expression = name;
@@ -256,7 +263,7 @@ function renderExpressionManager() {
     select.type = 'button';
     select.className = 'expression-select';
     const image = document.createElement('img');
-    image.src = state.config.stage.expressions?.[name] || state.config.stage.avatar;
+    image.src = source || state.config.stage.avatar;
     image.alt = `${label}表情`;
     const text = document.createElement('span');
     text.textContent = label;
@@ -272,7 +279,7 @@ function renderExpressionManager() {
     nameInput.maxLength = 32;
     nameInput.title = '模型会根据这个名称选择表情';
     nameInput.addEventListener('change', () => {
-      state.config.stage.expressionLabels[name] = nameInput.value.trim() || expressionNames[name];
+      state.config.stage.expressionLabels[name] = nameInput.value.trim() || name;
       saveConfig(false).catch((error) => toast(error.message, true));
     });
     const upload = document.createElement('label');
@@ -284,16 +291,43 @@ function renderExpressionManager() {
     input.accept = 'image/png,image/jpeg,image/webp';
     input.addEventListener('change', (event) => uploadExpression(event.target.files?.[0], name).catch((error) => toast(error.message, true)));
     upload.append(input);
-    card.append(select, nameInput, upload);
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'expression-delete';
+    remove.title = '删除表情';
+    remove.textContent = '×';
+    remove.disabled = expressions.length <= 1;
+    remove.addEventListener('click', () => deleteExpression(name));
+    card.append(select, nameInput, upload, remove);
     return card;
   }));
+}
+
+function addExpression() {
+  const key = `custom_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  const active = state.config.stage.activeExpression;
+  state.config.stage.expressions[key] = state.config.stage.expressions[active] || state.config.stage.avatar;
+  state.config.stage.expressionLabels[key] = '新表情';
+  state.config.stage.activeExpression = key;
+  saveConfig(false).then(() => toast('已添加表情，可重命名并替换图片')).catch((error) => toast(error.message, true));
+}
+
+function deleteExpression(name) {
+  const keys = Object.keys(state.config.stage.expressions || {});
+  if (keys.length <= 1) return toast('至少保留一个表情', true);
+  const label = state.config.stage.expressionLabels?.[name] || name;
+  if (!confirm(`删除“${label}”表情？`)) return;
+  delete state.config.stage.expressions[name];
+  delete state.config.stage.expressionLabels[name];
+  if (state.config.stage.activeExpression === name) state.config.stage.activeExpression = Object.keys(state.config.stage.expressions)[0];
+  saveConfig(false).then(() => toast('表情已删除')).catch((error) => toast(error.message, true));
 }
 
 function updateStatus(status = null) {
   const ready = state.keyConfigured && Boolean(state.config.provider.model);
   $('readyDot').classList.toggle('ready', ready);
   $('readyLabel').textContent = ready ? '可以开始对话' : '等待模型配置';
-  $('versionLabel').textContent = 'Syna Live 0.5.1';
+  $('versionLabel').textContent = 'Syna Live 0.6.0';
   $('quickProvider').textContent = ready ? (state.providers.find((item) => item.id === state.config.provider.id)?.name || '已配置') : '未配置';
   $('quickVoice').textContent = state.config.voice.enabled ? '开启' : '关闭';
   const live = status?.live;
@@ -329,6 +363,17 @@ function renderMessages() {
     container.append(item);
   }
   container.scrollTop = container.scrollHeight;
+}
+
+let messageSignature = '';
+async function syncMessages() {
+  if (state.busy) return;
+  const payload = await api('/api/messages');
+  const signature = payload.messages.map(({ id }) => id).join('|');
+  if (signature === messageSignature) return;
+  messageSignature = signature;
+  state.messages = payload.messages;
+  renderMessages();
 }
 
 async function speak(text) {
@@ -453,7 +498,8 @@ async function uploadAvatar(file, talking = false) {
   if (talking) state.config.stage.talkingAvatar = result.url;
   else {
     state.config.stage.avatar = result.url;
-    state.config.stage.expressions.normal = result.url;
+    const active = state.config.stage.activeExpression || Object.keys(state.config.stage.expressions)[0];
+    state.config.stage.expressions[active] = result.url;
   }
   await saveConfig(false);
   toast(talking ? '说话立绘已更新' : '静态立绘已更新');
@@ -471,7 +517,7 @@ async function uploadExpression(file, expression) {
   state.config.stage.expressions[expression] = result.url;
   state.config.stage.activeExpression = expression;
   await saveConfig(false);
-  toast(`${expressionNames[expression]}表情已更新`);
+  toast(`${state.config.stage.expressionLabels?.[expression] || expression}表情已更新`);
 }
 
 async function load() {
@@ -515,6 +561,8 @@ $('voiceRate').addEventListener('input', () => $('voiceRateValue').textContent =
 $('voicePitch').addEventListener('input', () => $('voicePitchValue').textContent = Number($('voicePitch').value).toFixed(2));
 $('voiceOutputMode').addEventListener('change', updateVoiceMeta);
 $('asrMode').addEventListener('change', updateVoiceMeta);
+$('visionMode').addEventListener('change', updateVisionMeta);
+$('addExpressionBtn').addEventListener('click', addExpression);
 $('avatarScale').addEventListener('input', () => {
   const scale = Number($('avatarScale').value);
   $('stageAvatar').style.transform = `scale(${scale})`;
@@ -688,5 +736,7 @@ $('testAsrBtn').addEventListener('click', async () => {
 });
 
 load().then(() => {
+  messageSignature = state.messages.map(({ id }) => id).join('|');
+  setInterval(() => syncMessages().catch(() => {}), 1000);
   if (state.config.vision.enabled) toggleVision().catch((error) => { $('visionStatus').textContent = error.message; });
 }).catch((error) => toast(error.message, true));

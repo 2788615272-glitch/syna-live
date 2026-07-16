@@ -43,6 +43,24 @@ test('runtime emits token, speech and expression events while the model streams'
   assert.equal(events.at(-1).type, 'done');
 });
 
+test('runtime includes prior turns in later model requests', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-history-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = await new LocalStore(dir).init();
+  const requests = [];
+  const runtime = new CompanionRuntime({
+    store,
+    vault: { has: () => true, get: () => 'key' },
+    modelAdapter: { stream: async function* (input) { requests.push(input); yield requests.length === 1 ? '第一轮回答' : '第二轮回答'; } },
+    liveAdapter: { getStatus: () => ({ connected: false }), disconnect: () => {} }
+  });
+  await runtime.chat('第一轮问题');
+  await runtime.chat('第二轮问题');
+  assert.deepEqual(requests[1].messages.slice(1).map(({ role, content }) => [role, content]), [
+    ['user', '第一轮问题'], ['assistant', '第一轮回答'], ['user', '第二轮问题']
+  ]);
+});
+
 test('vision analysis stores screen context and can produce a proactive reaction', async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-vision-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
@@ -59,4 +77,46 @@ test('vision analysis stores screen context and can produce a proactive reaction
   assert.equal(result.shouldReact, true);
   assert.equal(store.getStageState().vision.summary, '用户正在编辑代码');
   assert.equal(request.messages[1].content[1].type, 'image_url');
+});
+
+test('dual-brain chat explicitly trusts fresh vision instead of claiming it cannot see', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-vision-chat-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = await new LocalStore(dir).init();
+  await store.saveConfig({ ...store.getConfig(), vision: { enabled: true, mode: 'dual', intervalSeconds: 6, proactive: false } });
+  store.setStageState({ vision: { summary: '桌面打开着代码编辑器', updatedAt: Date.now() } });
+  let request;
+  const runtime = new CompanionRuntime({
+    store,
+    vault: { has: () => true, get: () => 'key' },
+    modelAdapter: { stream: async function* (input) { request = input; yield '我看到代码编辑器。'; } },
+    liveAdapter: { getStatus: () => ({ connected: false }), disconnect: () => {} }
+  });
+  await runtime.chat('你看到了什么');
+  assert.match(request.messages[0].content, /可以看见/);
+  assert.match(request.messages[0].content, /不要回答.*看不见/);
+});
+
+test('single-brain vision attaches the latest screenshot directly to the user turn', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-single-vision-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = await new LocalStore(dir).init();
+  await store.saveConfig({ ...store.getConfig(), vision: { enabled: true, mode: 'single', intervalSeconds: 6, proactive: false } });
+  let request;
+  let visionAnalysisCalls = 0;
+  const runtime = new CompanionRuntime({
+    store,
+    vault: { has: () => true, get: () => 'key' },
+    modelAdapter: {
+      complete: async () => { visionAnalysisCalls += 1; return '{}'; },
+      stream: async function* (input) { request = input; yield '我看到了。'; }
+    },
+    liveAdapter: { getStatus: () => ({ connected: false }), disconnect: () => {} }
+  });
+  await runtime.analyzeVision('data:image/jpeg;base64,AA==');
+  await runtime.chat('现在屏幕上是什么');
+  assert.equal(visionAnalysisCalls, 0);
+  const user = request.messages.at(-1);
+  assert.equal(user.content[1].type, 'image_url');
+  assert.equal(user.content[1].image_url.url, 'data:image/jpeg;base64,AA==');
 });

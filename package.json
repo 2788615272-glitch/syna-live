@@ -1,6 +1,6 @@
 {
   "name": "syna-live",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Local-first customizable AI companion and livestream avatar.",
   "type": "module",
   "main": "src/electron.mjs",

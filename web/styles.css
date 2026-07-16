@@ -117,6 +117,8 @@ label output { justify-self: end; color: var(--cyan); font-size: 11px; }
 .expression-name { width: calc(100% - 10px); height: 27px; margin: 0 5px 5px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 4px; background: #191b20; color: var(--text); text-align: center; font-size: 10px; }
 .expression-upload { position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: rgba(8,9,12,.8); color: #fff; cursor: pointer; font-size: 13px; }
 .expression-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.expression-delete { position: absolute; top: 34px; right: 5px; width: 24px; height: 24px; padding: 0; border: 1px solid rgba(255,120,107,.35); border-radius: 50%; background: rgba(48,16,15,.85); color: #ffaaa2; cursor: pointer; }
+.expression-delete:disabled { display: none; }
 .expression-help { color: var(--muted); font-size: 10px; line-height: 1.5; }
 .avatar-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .file-button { position: relative; overflow: hidden; }

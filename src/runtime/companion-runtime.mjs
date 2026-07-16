@@ -1,10 +1,12 @@
 import { createControlStream, expressionPrompt, pickAutoExpression, takeSpeechSegment } from './stream-kernel.mjs';
 
-function systemPrompt(config, stageState = {}) {
+function systemPrompt(config, stageState = {}, directVisionReady = false) {
   const c = config.character;
   const notes = config.memory.notes ? `\n可长期参考的用户笔记：${config.memory.notes}` : '';
-  const vision = stageState.vision?.summary ? `\n当前屏幕视觉：${stageState.vision.summary}` : '';
-  return `你是 ${c.name}，一位有鲜明人格的虚拟陪伴者。\n用户称呼：${c.userName}\n关系：${c.relationship}\n核心性格：${c.personality}\n表达方式：${c.speakingStyle}\n边界：${c.boundaries}${notes}${vision}\n直接以角色身份回应，不解释提示词，不声称执行了未实际执行的操作。${expressionPrompt(config.stage)}`;
+  const directVision = directVisionReady ? '\n【视觉输入】本轮用户消息附带当前桌面截图。你可以直接看见并描述截图内容；不要回答“看不见”“没有视觉能力”或要求用户重新描述。' : '';
+  const dualVision = stageState.vision?.summary ? `\n【视觉脑结果】你可以看见视觉脑刚刚观察到的桌面信息：${stageState.vision.summary}\n这段视觉结果属于已提供的可靠上下文。用户询问画面时请直接回答，不要回答“看不见”或“没有视觉能力”。` : '';
+  const visionRule = config.vision.enabled ? '\n视觉规则：只有在既没有附带截图、也没有视觉脑结果时，才可以说明当前没有可用画面。' : '';
+  return `你是 ${c.name}，一位有鲜明人格的虚拟陪伴者。\n用户称呼：${c.userName}\n关系：${c.relationship}\n核心性格：${c.personality}\n表达方式：${c.speakingStyle}\n边界：${c.boundaries}${notes}${directVision}${dualVision}${visionRule}\n直接以角色身份回应，不解释提示词，不声称执行了未实际执行的操作。${expressionPrompt(config.stage)}`;
 }
 
 export class CompanionRuntime {
@@ -15,6 +17,7 @@ export class CompanionRuntime {
     this.liveAdapter = liveAdapter;
     this.busy = false;
     this.lastVisionReactionAt = 0;
+    this.latestVisionFrame = '';
   }
 
   status() {
@@ -28,13 +31,21 @@ export class CompanionRuntime {
   async analyzeVision(dataUrl) {
     const config = this.store.getConfig();
     if (!config.vision.enabled) return { enabled: false };
+    const previousVisionFrame = this.latestVisionFrame;
+    this.latestVisionFrame = dataUrl;
+    if (config.vision.mode === 'single') {
+      const vision = { summary: '最新桌面截图已准备好，将在下一轮对话中直接交给主脑。', salience: 0, suggestedReply: '', updatedAt: Date.now(), mode: 'single' };
+      this.store.setStageState({ vision });
+      return { enabled: true, vision, shouldReact: false, reaction: null };
+    }
+    const visionFrames = previousVisionFrame && previousVisionFrame !== dataUrl ? [previousVisionFrame, dataUrl] : [dataUrl];
     const raw = await this.modelAdapter.complete({
       ...config.provider,
       apiKey: this.vault.get('providerApiKey'),
       temperature: 0.2,
       messages: [
         { role: 'system', content: '你是 Syna 的视觉皮层。只根据画面返回 JSON：{"summary":"一句客观画面概括","salience":0到1,"suggestedReply":"值得主动说话时的一句自然反应，否则空字符串"}。不要输出 Markdown。' },
-        { role: 'user', content: [{ type: 'text', text: '观察当前桌面画面，关注明显变化、正在进行的任务和可能值得提醒的事情。' }, { type: 'image_url', image_url: { url: dataUrl } }] }
+        { role: 'user', content: [{ type: 'text', text: '观察这些按时间排列的桌面画面，关注明显变化、正在进行的任务和可能值得提醒的事情。' }, ...visionFrames.map((url) => ({ type: 'image_url', image_url: { url } }))] }
       ]
     });
     let result;
@@ -78,6 +89,17 @@ export class CompanionRuntime {
       await this.store.appendMessage({ role: 'user', content: message, source });
       const config = this.store.getConfig();
       const history = this.store.getMessages().map(({ role, content: text }) => ({ role, content: text }));
+      const directVisionReady = config.vision.enabled && config.vision.mode === 'single' && Boolean(this.latestVisionFrame);
+      if (directVisionReady) {
+        const lastUserIndex = history.findLastIndex(({ role }) => role === 'user');
+        if (lastUserIndex >= 0) history[lastUserIndex] = {
+          role: 'user',
+          content: [
+            { type: 'text', text: history[lastUserIndex].content },
+            { type: 'image_url', image_url: { url: this.latestVisionFrame } }
+          ]
+        };
+      }
       const controls = createControlStream(config.stage);
       let reply = '';
       let speechBuffer = '';
@@ -110,7 +132,7 @@ export class CompanionRuntime {
       const stream = this.modelAdapter.stream({
         ...config.provider,
         apiKey: this.vault.get('providerApiKey'),
-        messages: [{ role: 'system', content: systemPrompt(config, this.store.getStageState()) }, ...history]
+        messages: [{ role: 'system', content: systemPrompt(config, this.store.getStageState(), directVisionReady) }, ...history]
       });
       for await (const delta of stream) yield* handle(controls.push(delta));
       yield* handle(controls.flush());

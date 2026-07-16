@@ -35,3 +35,17 @@ test('config is normalized and memory is bounded', async (t) => {
   assert.equal(store.getMessages().length, 4);
   assert.equal(store.getMessages().at(-1).content, 'message 7');
 });
+
+test('expressions can be added and removed without a fixed six-item schema', async (t) => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'syna-expressions-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const store = await new LocalStore(dir).init();
+  const input = store.getConfig();
+  input.stage.expressions = { normal: '/normal.png', sleepy: '/sleepy.png' };
+  input.stage.expressionLabels = { normal: '平静', sleepy: '困困' };
+  input.stage.activeExpression = 'sleepy';
+  const config = await store.saveConfig(input);
+  assert.deepEqual(Object.keys(config.stage.expressions), ['normal', 'sleepy']);
+  assert.equal(config.stage.expressionLabels.sleepy, '困困');
+  assert.equal(config.stage.activeExpression, 'sleepy');
+});

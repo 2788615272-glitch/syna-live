@@ -14,6 +14,8 @@ let speechPlayback = Promise.resolve();
 let speechGeneration = 0;
 let cancelCurrentSpeech;
 let pendingSpeechMessage = '';
+let messages = [];
+let messageSignature = '';
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -54,6 +56,32 @@ function setAvatar(stage, stageState) {
   const source = stageState.speaking && stage.talkingAvatar ? stage.talkingAvatar : expressionAvatar;
   if (source && source !== lastAvatar) { $('avatar').src = source; lastAvatar = source; }
   root.classList.toggle('speaking', Boolean(stageState.speaking));
+}
+
+function renderConversation() {
+  const container = $('conversation');
+  container.replaceChildren(...messages.slice(-20).map((message) => {
+    const item = document.createElement('article');
+    item.className = `conversation-message ${message.role}`;
+    const meta = document.createElement('div');
+    meta.className = 'conversation-meta';
+    meta.textContent = message.role === 'assistant' ? config.character.name : config.character.userName;
+    const bubble = document.createElement('div');
+    bubble.className = 'conversation-bubble';
+    bubble.textContent = message.content;
+    item.append(meta, bubble);
+    return item;
+  }));
+  container.scrollTop = container.scrollHeight;
+}
+
+async function refreshMessages() {
+  const payload = await api('/api/messages');
+  const signature = payload.messages.map(({ id }) => id).join('|');
+  if (signature === messageSignature) return;
+  messageSignature = signature;
+  messages = payload.messages;
+  renderConversation();
 }
 
 function stopRecognition() {
@@ -143,6 +171,8 @@ async function sendMessage(message) {
       if (event.type === 'expression') setAvatar(config.stage, { expression: event.expression, speaking: true });
     }
     modelStreaming = false;
+    await refreshMessages();
+    $('reply').textContent = '';
     await speechPlayback;
   } catch (error) {
     $('reply').textContent = error.message;
@@ -197,19 +227,20 @@ async function refreshStage() {
   try {
     const payload = await api('/api/stage/state');
     setAvatar(payload.stage, payload.state);
-    if (!busy && payload.state.subtitle) $('reply').textContent = payload.state.subtitle;
   } catch {}
 }
 
 async function load() {
   const payload = await api('/api/bootstrap');
   config = payload.config;
+  messages = payload.messages;
+  messageSignature = messages.map(({ id }) => id).join('|');
   $('characterName').textContent = config.character.name;
-  const lastMessage = payload.messages.filter((message) => message.role === 'assistant').at(-1);
-  if (lastMessage) $('reply').textContent = lastMessage.content;
+  renderConversation();
   setMode('text');
   await refreshStage();
   setInterval(refreshStage, 400);
+  setInterval(() => refreshMessages().catch(() => {}), 1000);
 }
 
 load().catch((error) => { $('reply').textContent = error.message; });

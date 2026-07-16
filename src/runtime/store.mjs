@@ -26,6 +26,27 @@ function number(value, fallback, min, max) {
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
 }
 
+function normalizeExpressions(stage, base) {
+  const supplied = stage.expressions && typeof stage.expressions === 'object' && !Array.isArray(stage.expressions)
+    ? Object.entries(stage.expressions)
+    : Object.entries(base.stage.expressions);
+  const expressions = {};
+  const expressionLabels = {};
+  for (const [rawKey, rawSource] of supplied) {
+    const key = String(rawKey || '').trim();
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(key) || Object.hasOwn(expressions, key)) continue;
+    const source = text(rawSource, '', 500);
+    if (!source) continue;
+    expressions[key] = source;
+    expressionLabels[key] = text(stage.expressionLabels?.[rawKey], base.stage.expressionLabels[rawKey] || key, 32);
+  }
+  if (!Object.keys(expressions).length) {
+    expressions.normal = base.stage.expressions.normal;
+    expressionLabels.normal = base.stage.expressionLabels.normal;
+  }
+  return { expressions, expressionLabels };
+}
+
 export class LocalStore {
   constructor(dataDir) {
     this.dataDir = dataDir;
@@ -53,6 +74,8 @@ export class LocalStore {
     const memory = input.memory || {};
     const vision = input.vision || {};
     const live = input.live || {};
+    const { expressions, expressionLabels } = normalizeExpressions(stage, base);
+    const activeExpression = Object.hasOwn(expressions, stage.activeExpression) ? stage.activeExpression : Object.keys(expressions)[0];
     return {
       version: 1,
       character: {
@@ -98,9 +121,9 @@ export class LocalStore {
       stage: {
         avatar: text(stage.avatar, base.stage.avatar, 500),
         talkingAvatar: text(stage.talkingAvatar, base.stage.talkingAvatar, 500),
-        activeExpression: ['normal', 'wink', 'angry', 'confused', 'observe', 'speechless'].includes(stage.activeExpression) ? stage.activeExpression : base.stage.activeExpression,
-        expressions: Object.fromEntries(Object.entries(base.stage.expressions).map(([name, source]) => [name, text(stage.expressions?.[name], source, 500)])),
-        expressionLabels: Object.fromEntries(Object.entries(base.stage.expressionLabels).map(([name, label]) => [name, text(stage.expressionLabels?.[name], label, 32)])),
+        activeExpression,
+        expressions,
+        expressionLabels,
         avatarScale: number(stage.avatarScale, 1, 0.5, 1.8),
         subtitleEnabled: stage.subtitleEnabled !== false
       },
@@ -111,6 +134,7 @@ export class LocalStore {
       },
       vision: {
         enabled: vision.enabled === true,
+        mode: ['single', 'dual'].includes(vision.mode) ? vision.mode : base.vision.mode,
         intervalSeconds: number(vision.intervalSeconds, 6, 3, 60),
         proactive: vision.proactive !== false
       },
@@ -125,6 +149,7 @@ export class LocalStore {
 
   async saveConfig(input) {
     this.config = this.normalizeConfig(input);
+    if (!Object.hasOwn(this.config.stage.expressions, this.state.expression)) this.state.expression = this.config.stage.activeExpression;
     await writeJsonAtomic(this.configFile, this.config);
     return structuredClone(this.config);
   }

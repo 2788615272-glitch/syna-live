@@ -28,6 +28,26 @@ function encodeWav(parts, inputRate, outputRate = 16000) {
   return new Blob([buffer], { type: 'audio/wav' });
 }
 
+export function createSilenceDetector({ silenceMs = 700, minimumSpeechMs = 250 } = {}) {
+  let speechStartedAt = null;
+  let lastSpeechAt = null;
+  let ended = false;
+  return {
+    push({ now, speaking }) {
+      if (ended) return true;
+      if (speaking) {
+        speechStartedAt ??= now;
+        lastSpeechAt = now;
+        return false;
+      }
+      if (speechStartedAt === null || lastSpeechAt === null || lastSpeechAt - speechStartedAt < minimumSpeechMs) return false;
+      if (now - lastSpeechAt < silenceMs) return false;
+      ended = true;
+      return true;
+    }
+  };
+}
+
 export function createSpeechInput({ api, getMode, onText, onStatus = () => {} }) {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition;
@@ -42,16 +62,22 @@ export function createSpeechInput({ api, getMode, onText, onStatus = () => {} })
   let audioContext;
   let stopPcmRecording;
 
-  function monitorSound(mediaStream) {
+  function monitorSound(mediaStream, onSilence) {
     audioContext ||= new AudioContext();
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = 512;
     audioContext.createMediaStreamSource(mediaStream).connect(analyser);
     const values = new Uint8Array(analyser.fftSize);
+    const detector = createSilenceDetector();
     clearInterval(soundTimer);
     soundTimer = setInterval(() => {
       analyser.getByteTimeDomainData(values);
-      if (values.some((value) => Math.abs(value - 128) > 8)) heardSound = true;
+      const speaking = values.some((value) => Math.abs(value - 128) > 8);
+      if (speaking) heardSound = true;
+      if (detector.push({ now: performance.now(), speaking })) {
+        clearInterval(soundTimer);
+        onSilence?.();
+      }
     }, 100);
   }
 
@@ -66,7 +92,7 @@ export function createSpeechInput({ api, getMode, onText, onStatus = () => {} })
     if (!active) return;
     stream ||= await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     heardSound = false;
-    monitorSound(stream);
+    monitorSound(stream, () => recorder?.state === 'recording' && recorder.stop());
     chunks = [];
     recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' });
     recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
@@ -90,12 +116,15 @@ export function createSpeechInput({ api, getMode, onText, onStatus = () => {} })
     const source = context.createMediaStreamSource(stream);
     const processor = context.createScriptProcessor(4096, 1, 1);
     const parts = [];
+    const detector = createSilenceDetector();
     heardSound = false;
     let finished = false;
     processor.onaudioprocess = (event) => {
       const values = new Float32Array(event.inputBuffer.getChannelData(0));
       parts.push(values);
-      if (!heardSound && values.some((value) => Math.abs(value) > 0.025)) heardSound = true;
+      const speaking = values.some((value) => Math.abs(value) > 0.025);
+      if (speaking) heardSound = true;
+      if (detector.push({ now: performance.now(), speaking })) stopPcmRecording?.();
     };
     source.connect(processor);
     processor.connect(context.destination);

@@ -7,7 +7,14 @@ button,textarea { font:inherit; }
 .avatar { position:absolute; inset:2% 1% 2%; width:98%; height:96%; object-fit:contain; object-position:bottom center; transform-origin:bottom center; filter:drop-shadow(0 18px 24px rgba(0,0,0,.48)); animation:idle 4s ease-in-out infinite; -webkit-app-region:drag; }
 .companion.speaking .avatar { animation:speaking .34s ease-in-out infinite alternate; }
 .chat-card { position:absolute; z-index:6; left:9%; right:9%; top:39%; padding:12px; border:1px solid rgba(255,255,255,.2); border-radius:14px; background:rgba(13,14,18,.84); box-shadow:0 16px 38px rgba(0,0,0,.38); backdrop-filter:blur(14px); -webkit-app-region:no-drag; }
-.reply { min-height:42px; max-height:104px; overflow:auto; color:#f7f8fa; font-size:13px; line-height:1.55; }
+.conversation { max-height:190px; overflow:auto; display:grid; gap:7px; padding-right:3px; }
+.conversation-message { display:grid; gap:2px; }
+.conversation-message.user { justify-items:end; }
+.conversation-meta { color:#8f98a4; font-size:9px; }
+.conversation-bubble { max-width:90%; padding:7px 9px; border-radius:9px; background:rgba(255,255,255,.09); color:#f7f8fa; font-size:12px; line-height:1.45; white-space:pre-wrap; }
+.conversation-message.user .conversation-bubble { background:#245f5a; }
+.reply { display:none; margin-top:7px; max-height:90px; overflow:auto; padding:7px 9px; border-left:2px solid #58d9d0; color:#f7f8fa; font-size:12px; line-height:1.5; white-space:pre-wrap; }
+.reply:not(:empty) { display:block; }
 .mode-tabs { display:grid; grid-template-columns:repeat(3,1fr); margin:9px 0; border:1px solid rgba(255,255,255,.14); border-radius:8px; overflow:hidden; }
 .mode-tabs button { height:30px; border:0; border-right:1px solid rgba(255,255,255,.12); background:transparent; color:#aeb5bf; cursor:pointer; font-size:10px; }
 .mode-tabs button:last-child { border-right:0; }
